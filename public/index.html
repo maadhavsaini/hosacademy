@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Real-Time Chat Application</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <!-- Login Screen (Nickname Entry Modal) -->
+    <div id="loginScreen" class="login-screen">
+      <div class="login-container">
+        <div class="login-header">
+          <h1>Welcome to Chat</h1>
+          <p>Enter your nickname to join the conversation</p>
+        </div>
+        <form id="loginForm" class="login-form">
+          <input
+            type="text"
+            id="nicknameInput"
+            class="nickname-input"
+            placeholder="Enter your nickname"
+            autocomplete="off"
+            maxlength="20"
+            required
+          />
+          <button type="submit" class="login-btn">Join Chat</button>
+        </form>
+        <p class="login-hint">Press Enter or click Join Chat to continue</p>
+      </div>
+    </div>
+
+    <!-- Main Chat Application -->
+    <div id="chatApp" class="chat-app hidden">
+      <!-- Header -->
+      <header class="chat-header">
+        <div class="header-content">
+          <h1 class="app-title">💬 Real-Time Chat</h1>
+          <div class="user-info">
+            <span class="current-user"
+              >You: <strong id="currentNickname"></strong
+            ></span>
+            <span class="user-count"
+              >Users Online: <strong id="userCount">0</strong></span
+            >
+          </div>
+        </div>
+      </header>
+
+      <!-- Main Content Area -->
+      <div class="chat-container">
+        <!-- Sidebar - Active Users -->
+        <aside class="sidebar">
+          <div class="sidebar-header">
+            <h2>Active Users</h2>
+            <span class="online-indicator" id="onlineCount">0</span>
+          </div>
+          <div class="users-list" id="usersList">
+            <!-- Active users will be populated here -->
+          </div>
+        </aside>
+
+        <!-- Chat Window -->
+        <main class="chat-window">
+          <!-- Messages Container -->
+          <div class="messages-container" id="messagesContainer">
+            <!-- Messages will be appended here -->
+            <div class="welcome-message">
+              <p>Welcome to the chat! Messages will appear here.</p>
+            </div>
+          </div>
+
+          <!-- Message Input Area -->
+          <div class="input-area">
+            <form id="messageForm" class="message-form">
+              <input
+                type="text"
+                id="messageInput"
+                class="message-input"
+                placeholder="Type your message and press Enter..."
+                autocomplete="off"
+                required
+              />
+              <button type="submit" class="send-btn">Send</button>
+            </form>
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <!-- Socket.io client library -->
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <!-- Client-side JavaScript -->
+    <script src="client.js"></script>
+  </body>
+</html>
