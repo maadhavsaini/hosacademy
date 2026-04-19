@@ -23,8 +23,9 @@ Thumbs.db
 dist/
 build/
 
-# Prep message (custom system prompts - not committed)
+# Sensitive files - never commit
 prep-message.js
-
-# Prep message (custom system prompts)
-prep-message.js
+AI_SETUP.md
+server-v2.js
+chat.db
+*.db
