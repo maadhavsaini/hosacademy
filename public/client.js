@@ -38,6 +38,8 @@ let userProfiles = {};
 let editingProfileUserId = null;
 let currentProfileAvatar = '';
 let searchCollapsed = false;
+let messageTransformWords = [];
+let messageTransformActive = false;
 
 // ========================================
 // DOM ELEMENTS
@@ -91,6 +93,14 @@ const profileEditMode = document.getElementById('profileEditMode');
 const profileAvatarInput = document.getElementById('profileAvatarInput');
 const profileBioEdit = document.getElementById('profileBioEdit');
 const bioCharCount = document.getElementById('bioCharCount');
+
+// Fun Button Elements
+const funButton = document.getElementById('funButton');
+const funModal = document.getElementById('funModal');
+const funModalClose = document.getElementById('funModalClose');
+const gifAnimationBtn = document.getElementById('gifAnimationBtn');
+const messageTransformBtn = document.getElementById('messageTransformBtn');
+const gifAnimationContainer = document.getElementById('gifAnimationContainer');
 
 // ========================================
 // UTILITY FUNCTIONS
@@ -579,6 +589,23 @@ messageForm.addEventListener('submit', (e) => {
     return;
   }
 
+  // Handle /transform command
+  if (message.toLowerCase().startsWith('/transform ')) {
+    const word = message.substring('/transform '.length).trim();
+    if (word.length === 0) {
+      addSystemNotification('❌ Please specify a word: /transform <word>');
+    } else if (word.toLowerCase() === 'off') {
+      socket.emit('stop_transform');
+      addSystemNotification('✨ Message transformation disabled');
+    } else {
+      socket.emit('set_transform_word', { word: word });
+    }
+    messageInput.value = '';
+    messageInput.focus();
+    updateSendButtonState();
+    return;
+  }
+
   // Create message object with type 'text'
   const messageData = {
     type: MESSAGE_TYPE.TEXT,
@@ -921,11 +948,73 @@ function saveProfileChanges() {
 function showReactionPicker(messageId, button) {
   const emojis = ['👍', '❤️', '😂', '😮', '😢', '🎉', '🔥', '✨'];
   
-  // Create simple picker (could be enhanced with a popover)
-  const emoji = prompt(`Add reaction:\n${emojis.join(' ')}`);
-  if (emoji && emojis.includes(emoji)) {
-    toggleReaction(messageId, emoji);
+  // Remove any existing picker
+  const existingPicker = document.querySelector('.emoji-picker');
+  if (existingPicker) {
+    existingPicker.remove();
   }
+  
+  // Create emoji picker UI
+  const picker = document.createElement('div');
+  picker.className = 'emoji-picker';
+  
+  emojis.forEach(emoji => {
+    const item = document.createElement('div');
+    item.className = 'emoji-picker-item';
+    item.textContent = emoji;
+    item.style.cursor = 'pointer';
+    item.addEventListener('click', () => {
+      toggleReaction(messageId, emoji);
+      picker.remove();
+    });
+    picker.appendChild(item);
+  });
+  
+  // Position picker relative to button
+  button.parentElement.style.position = 'relative';
+  button.parentElement.appendChild(picker);
+}
+
+/**
+ * Play random GIF animation
+ */
+function playRandomGif() {
+  socket.emit('play_gif', {
+    username: currentNickname
+  });
+}
+
+/**
+ * Display GIF animation on screen
+ */
+function displayGif(gifUrl) {
+  const gif = document.createElement('img');
+  gif.src = gifUrl;
+  gif.style.position = 'fixed';
+  
+  // Random size (200-400px)
+  const size = Math.random() * 200 + 200;
+  gif.style.width = size + 'px';
+  gif.style.height = 'auto';
+  
+  // Random position
+  const maxX = window.innerWidth - size;
+  const maxY = window.innerHeight - size;
+  const x = Math.random() * maxX;
+  const y = Math.random() * maxY;
+  gif.style.left = x + 'px';
+  gif.style.top = y + 'px';
+  
+  gif.style.zIndex = '101';
+  gif.style.pointerEvents = 'none';
+  gif.style.animation = 'fadeInOut 3s ease-in-out forwards';
+  
+  gifAnimationContainer.appendChild(gif);
+  
+  // Remove after animation completes
+  setTimeout(() => {
+    gif.remove();
+  }, 3000);
 }
 
 /**
@@ -1151,6 +1240,52 @@ searchToggleBtn.addEventListener('click', () => {
 });
 
 // ========================================
+// FUN BUTTON EVENT LISTENERS
+// ========================================
+
+/**
+ * Open fun options modal
+ */
+funButton.addEventListener('click', () => {
+  funModal.classList.remove('hidden');
+});
+
+/**
+ * Close fun modal
+ */
+funModalClose.addEventListener('click', () => {
+  funModal.classList.add('hidden');
+});
+
+/**
+ * Close fun modal when clicking outside
+ */
+funModal.addEventListener('click', (e) => {
+  if (e.target === funModal) {
+    funModal.classList.add('hidden');
+  }
+});
+
+/**
+ * Play GIF animation
+ */
+gifAnimationBtn.addEventListener('click', () => {
+  playRandomGif();
+  funModal.classList.add('hidden');
+});
+
+/**
+ * Transform messages
+ */
+messageTransformBtn.addEventListener('click', () => {
+  const newWord = prompt('Enter a word to transform all messages into:', 'Banana!');
+  if (newWord && newWord.trim()) {
+    socket.emit('set_transform_word', { word: newWord.trim() });
+    funModal.classList.add('hidden');
+  }
+});
+
+// ========================================
 // SOCKET.IO EVENT LISTENERS
 // ========================================
 
@@ -1265,6 +1400,31 @@ socket.on('reaction_update', (data) => {
 socket.on('connect', () => {
   console.log('Connected to server with ID:', socket.id);
   isConnected = true;
+});
+
+/**
+ * Handle GIF animation broadcast
+ */
+socket.on('gif_animation', (data) => {
+  displayGif(data.gifUrl);
+  addSystemNotification(`🎬 ${data.username} played a random GIF!`);
+});
+
+/**
+ * Handle message transformation
+ */
+socket.on('transform_message_start', (data) => {
+  messageTransformActive = true;
+  messageTransformWords = [data.word];
+  addSystemNotification(`✨ All messages are now ${data.word}!`);
+});
+
+/**
+ * Handle transform message stop
+ */
+socket.on('transform_message_stop', () => {
+  messageTransformActive = false;
+  messageTransformWords = [];
 });
 
 /**

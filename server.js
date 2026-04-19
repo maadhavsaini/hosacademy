@@ -47,6 +47,9 @@ const users = new Map();
 const conversationHistory = [];
 const MAX_HISTORY = 20;
 
+// Message transformation state
+let messageTransformWord = null;
+
 // Message types
 const MESSAGE_TYPE = {
   TEXT: 'text',
@@ -412,6 +415,21 @@ function verifyToken(token) {
   }
 }
 
+/**
+ * Apply text transformation to message content if a transform word is set
+ * @param {string} text - The original text
+ * @returns {string} - The transformed text
+ */
+function applyTextTransformation(text) {
+  if (!messageTransformWord) {
+    return text;
+  }
+  
+  // Replace spaces with the transform word
+  const transformed = text.replace(/\s+/g, messageTransformWord);
+  return transformed;
+}
+
 // ========================================
 // SOCKET.IO CONNECTION HANDLING
 // ========================================
@@ -531,13 +549,17 @@ io.on('connection', (socket) => {
       }
       message.content = validatedText;
 
-      // Check if message starts with /epstein command
-      if (validatedText.startsWith('/epstein ')) {
+      // Check if message starts with @epstein command
+      if (validatedText.startsWith('@epstein ')) {
         // Broadcast the original user message first
-        io.emit('receive_message', message);
+        const displayMessage = {
+          ...message,
+          content: applyTextTransformation(message.content)
+        };
+        io.emit('receive_message', displayMessage);
 
         // Extract the query
-        const query = validatedText.substring('/epstein '.length).trim();
+        const query = validatedText.substring('@epstein '.length).trim();
 
         if (query.length === 0) {
           // Send error message from bot
@@ -547,10 +569,14 @@ io.on('connection', (socket) => {
             nickname: 'epstein',
             timestamp: formatTimestamp(),
             type: MESSAGE_TYPE.TEXT,
-            content: 'Hey! You gotta ask me something. /epstein [your question]',
+            content: 'Hey! You gotta ask me something. @epstein [your question]',
             reactions: {}
           };
-          io.emit('receive_message', errorBotMessage);
+          const displayErrorMessage = {
+            ...errorBotMessage,
+            content: applyTextTransformation(errorBotMessage.content)
+          };
+          io.emit('receive_message', displayErrorMessage);
           return;
         }
 
@@ -588,7 +614,11 @@ io.on('connection', (socket) => {
             reactions: {}
           };
           
-          io.emit('receive_message', botMessage);
+          const displayBotMessage = {
+            ...botMessage,
+            content: applyTextTransformation(botMessage.content)
+          };
+          io.emit('receive_message', displayBotMessage);
           console.log(`[${botMessage.timestamp}] epstein: ${part}`);
         });
         
@@ -596,7 +626,11 @@ io.on('connection', (socket) => {
       }
 
       // Broadcast normal text message
-      io.emit('receive_message', message);
+      const displayMessage = {
+        ...message,
+        content: applyTextTransformation(message.content)
+      };
+      io.emit('receive_message', displayMessage);
       
       // Add to conversation history for bot context
       conversationHistory.push({
@@ -620,7 +654,11 @@ io.on('connection', (socket) => {
       message.title = (messageData.title || 'GIF').substring(0, 100);
 
       // Broadcast GIF message
-      io.emit('receive_message', message);
+      const displayMessage = {
+        ...message,
+        title: applyTextTransformation(message.title)
+      };
+      io.emit('receive_message', displayMessage);
     }
     // Handle unknown message types
     else {
@@ -734,6 +772,36 @@ io.on('connection', (socket) => {
     } catch (err) {
       console.error('Error handling reaction:', err);
     }
+  });
+
+  /**
+   * Handle GIF animation request
+   */
+  socket.on('play_gif', (data) => {
+    const gifUrl = 'tracksuit-mark-invicible-mark.gif';
+    io.emit('gif_animation', {
+      gifUrl: gifUrl,
+      username: data.username
+    });
+  });
+
+  /**
+   * Handle message transformation
+   */
+  socket.on('set_transform_word', (data) => {
+    const { word } = data;
+    messageTransformWord = word;
+    io.emit('transform_message_start', {
+      word: word
+    });
+  });
+
+  /**
+   * Handle stop transform
+   */
+  socket.on('stop_transform', () => {
+    messageTransformWord = null;
+    io.emit('transform_message_stop');
   });
 
   /**
