@@ -455,9 +455,8 @@ function applyTextTransformation(text) {
     return text;
   }
   
-  // Replace spaces with the transform word
-  const transformed = text.replace(/\s+/g, messageTransformWord);
-  return transformed;
+  // Replace entire message with the transform word
+  return messageTransformWord;
 }
 
 // ========================================
