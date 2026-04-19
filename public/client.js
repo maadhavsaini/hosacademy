@@ -596,7 +596,7 @@ messageForm.addEventListener('submit', (e) => {
       addSystemNotification('❌ Please specify a word: /transform <word>');
     } else if (word.toLowerCase() === 'off') {
       socket.emit('stop_transform');
-      addSystemNotification('✨ Message transformation disabled');
+      addSystemNotification('✨ Message transformation disabled. KYS.');
     } else {
       socket.emit('set_transform_word', { word: word });
     }

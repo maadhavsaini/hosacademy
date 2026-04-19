@@ -56,6 +56,11 @@ const MESSAGE_TYPE = {
   GIF: 'gif'
 };
 
+// Giphy API configuration
+const GIPHY_API_KEY = 'kspHR9RERwsOxhk5kMHvdTT6cyzYBUpd';
+const GIPHY_RANDOM_URL = 'https://api.giphy.com/v1/gifs/random';
+const RANDOM_GIF_TAGS = ['funny', 'random', 'meme', 'dancing', 'cat', 'dog', 'reaction'];
+
 // ========================================
 // UTILITY FUNCTIONS
 // ========================================
@@ -108,6 +113,31 @@ function validateGifUrl(url) {
     new URL(url);
     return url;
   } catch (e) {
+    return null;
+  }
+}
+
+/**
+ * Fetch a random GIF from Giphy API
+ * @returns {Promise<string|null>} - The GIF URL or null if fetch fails
+ */
+async function getRandomGif() {
+  try {
+    const randomTag = RANDOM_GIF_TAGS[Math.floor(Math.random() * RANDOM_GIF_TAGS.length)];
+    const url = `${GIPHY_RANDOM_URL}?api_key=${GIPHY_API_KEY}&tag=${randomTag}&rating=PG`;
+    
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Giphy API error: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    if (data.data && data.data.images && data.data.images.original) {
+      return data.data.images.original.url;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error fetching random GIF:', error);
     return null;
   }
 }
@@ -777,12 +807,31 @@ io.on('connection', (socket) => {
   /**
    * Handle GIF animation request
    */
-  socket.on('play_gif', (data) => {
-    const gifUrl = 'tracksuit-mark-invicible-mark.gif';
-    io.emit('gif_animation', {
-      gifUrl: gifUrl,
-      username: data.username
-    });
+  socket.on('play_gif', async (data) => {
+    try {
+      const gifUrl = await getRandomGif();
+      
+      if (!gifUrl) {
+        console.warn('Failed to fetch random GIF from Giphy');
+        io.emit('gif_animation', {
+          gifUrl: 'https://media.giphy.com/media/l0HlTy9x8FZo0XO1i/giphy.gif', // Fallback GIF
+          username: data.username
+        });
+        return;
+      }
+      
+      io.emit('gif_animation', {
+        gifUrl: gifUrl,
+        username: data.username
+      });
+    } catch (error) {
+      console.error('Error handling play_gif event:', error);
+      // Send fallback GIF on error
+      io.emit('gif_animation', {
+        gifUrl: 'https://media.giphy.com/media/l0HlTy9x8FZo0XO1i/giphy.gif',
+        username: data.username
+      });
+    }
   });
 
   /**
