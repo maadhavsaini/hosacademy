@@ -25,6 +25,9 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Serve GIF files from public/gifs directory
 app.use('/gifs', express.static(path.join(__dirname, 'public', 'gifs')));
 
+// Serve audio files from public/audio directory
+app.use('/audio', express.static(path.join(__dirname, 'public', 'audio')));
+
 // JWT Secret (should be in .env in production)
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
@@ -853,6 +856,34 @@ io.on('connection', (socket) => {
         gifUrl: 'https://media.giphy.com/media/l0HlTy9x8FZo0XO1i/giphy.gif',
         username: data.username
       });
+    }
+  });
+
+  /**
+   * Handle audio broadcast (Quiet Mode)
+   */
+  socket.on('play_audio', (data) => {
+    try {
+      let audioUrl = data.audioFile;
+      
+      // Handle file references
+      if (audioUrl && audioUrl.startsWith('@file:')) {
+        const filename = audioUrl.substring('@file:'.length);
+        // Validate filename to prevent directory traversal
+        if (!/^[\w.-]+$/.test(filename)) {
+          console.warn('Invalid filename:', filename);
+          return;
+        }
+        // Return the file URL that the client can access
+        audioUrl = `/audio/${filename}`;
+      }
+      
+      io.emit('play_audio', {
+        audioUrl: audioUrl,
+        username: data.username
+      });
+    } catch (error) {
+      console.error('Error handling play_audio event:', error);
     }
   });
 

@@ -100,6 +100,7 @@ const funModal = document.getElementById('funModal');
 const funModalClose = document.getElementById('funModalClose');
 const gifAnimationBtn = document.getElementById('gifAnimationBtn');
 const messageTransformBtn = document.getElementById('messageTransformBtn');
+const quietModeBtn = document.getElementById('quietModeBtn');
 const gifAnimationContainer = document.getElementById('gifAnimationContainer');
 
 // GIF Animation Modal Elements
@@ -1139,6 +1140,18 @@ function displayGif(gifUrl) {
 }
 
 /**
+ * Play audio file for all users
+ * @param {string} audioUrl - URL of the audio file to play
+ */
+function playAudioFile(audioUrl) {
+  const audio = new Audio(audioUrl);
+  audio.volume = 1.0; // Maximum volume
+  audio.play().catch(err => {
+    console.error('Error playing audio:', err);
+  });
+}
+
+/**
  * Toggle reaction on a message
  * @param {String} messageId - Message ID
  * @param {String} emoji - Emoji to react with
@@ -1247,7 +1260,8 @@ function updateUsersList(activeUsers) {
 
     // Click to show profile
     userItem.addEventListener('click', () => {
-      showUserProfile(currentUserId, nickname);
+      const userId = nickname === currentNickname ? currentUserId : nickname;
+      showUserProfile(userId, nickname);
     });
 
     userItem.addEventListener('mouseenter', () => {
@@ -1458,6 +1472,18 @@ messageTransformBtn.addEventListener('click', () => {
   }
 });
 
+/**
+ * Play Quiet Mode audio
+ */
+quietModeBtn.addEventListener('click', () => {
+  socket.emit('play_audio', {
+    username: currentNickname,
+    audioFile: '@file:chicken-on-tree-screaming.mp3'
+  });
+  funModal.classList.add('hidden');
+  addSystemNotification('🔊 AAAAAHHHHHHH!!!');
+});
+
 // ========================================
 // SOCKET.IO EVENT LISTENERS
 // ========================================
@@ -1581,6 +1607,14 @@ socket.on('connect', () => {
 socket.on('gif_animation', (data) => {
   displayGif(data.gifUrl);
   addSystemNotification(`🎬 ${data.username} played a random GIF!`);
+});
+
+/**
+ * Handle audio broadcast (Quiet Mode)
+ */
+socket.on('play_audio', (data) => {
+  playAudioFile(data.audioUrl);
+  addSystemNotification(`🔊 ${data.username} played an audio clip!`);
 });
 
 /**
