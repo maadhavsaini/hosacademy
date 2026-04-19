@@ -18,9 +18,19 @@ const io = socketIO(server, {
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Initialize Groq client
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY
-});
+let groq;
+try {
+  if (!process.env.GROQ_API_KEY) {
+    throw new Error('GROQ_API_KEY environment variable is not set');
+  }
+  groq = new Groq({
+    apiKey: process.env.GROQ_API_KEY
+  });
+  console.log('✅ Groq API client initialized successfully');
+} catch (error) {
+  console.error('❌ Failed to initialize Groq client:', error.message);
+  process.exit(1);
+}
 
 // Store active users
 const users = new Map();
@@ -104,22 +114,29 @@ function formatTimestamp() {
  */
 async function getBotResponse(query) {
   try {
-    const message = await groq.messages.create({
-      model: 'llama3-8b-8192',
+    console.log(`📤 Calling Groq API with query: "${query}"`);
+    
+    const response = await groq.chat.completions.create({
+      model: 'llama-3.1-8b-instant',
       max_tokens: 256,
       messages: [
+        {
+          role: 'system',
+          content: 'You are a fun, slightly unhinged AI bot named epstein participating in a group chat. Keep responses brief (1-2 sentences max), funny, and casual. You love emojis and internet culture.'
+        },
         {
           role: 'user',
           content: query
         }
-      ],
-      system: 'You are a fun, slightly unhinged AI bot named epstein participating in a group chat. Keep responses brief (1-2 sentences max), funny, and casual. You love emojis and internet culture.'
+      ]
     });
 
-    // Extract the text from the response
-    return message.content[0].type === 'text' ? message.content[0].text : 'Did not compute.';
+    const reply = response.choices[0].message.content;
+    console.log(`📥 Groq API response received: "${reply}"`);
+    return reply;
   } catch (error) {
-    console.error('Groq API error:', error);
+    console.error('❌ Groq API error:', error.message);
+    console.error('Error details:', error);
     return 'My brain hurts, try again later. 🤖';
   }
 }
