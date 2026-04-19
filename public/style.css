@@ -551,6 +551,71 @@ body {
   cursor: not-allowed;
 }
 
+/* Brainrot Toggle Switch */
+.brainrot-toggle-container {
+  padding: 0 0 12px 0;
+  display: flex;
+  align-items: center;
+}
+
+.brainrot-toggle {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+  gap: 8px;
+}
+
+.brainrot-checkbox {
+  display: none;
+}
+
+.toggle-slider {
+  width: 44px;
+  height: 24px;
+  background-color: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(0, 212, 255, 0.3);
+  border-radius: 12px;
+  position: relative;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+
+.toggle-slider::after {
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  background-color: rgba(0, 212, 255, 0.5);
+  border-radius: 10px;
+  top: 2px;
+  left: 2px;
+  transition: all 0.3s ease;
+}
+
+.brainrot-checkbox:checked + .toggle-slider {
+  background-color: rgba(0, 212, 255, 0.25);
+  border-color: rgba(0, 212, 255, 0.7);
+  box-shadow: 0 0 12px rgba(0, 212, 255, 0.3);
+}
+
+.brainrot-checkbox:checked + .toggle-slider::after {
+  left: 22px;
+  background-color: #00d4ff;
+  box-shadow: 0 0 8px rgba(0, 212, 255, 0.5);
+}
+
+.toggle-label {
+  font-size: 13px;
+  color: #a0a0a0;
+  font-weight: 500;
+  transition: color 0.3s ease;
+}
+
+.brainrot-checkbox:checked ~ .toggle-label {
+  color: #00d4ff;
+}
+
 /* Scrollbar Styling */
 ::-webkit-scrollbar {
   width: 8px;
