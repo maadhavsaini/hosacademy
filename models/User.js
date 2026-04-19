@@ -6,123 +6,98 @@ class User {
   /**
    * Create a new user with hashed password
    */
-  static async create(username, email, password, avatar_url = null) {
-    return new Promise((resolve, reject) => {
-      // Hash password with bcrypt (10 rounds)
-      bcrypt.hash(password, 10, (err, hash) => {
-        if (err) {
-          reject(new Error(`Password hashing failed: ${err.message}`));
-          return;
-        }
+  static create(username, email, password, avatar_url = null) {
+    try {
+      // Hash password with bcrypt synchronously (10 rounds)
+      const hash = bcrypt.hashSync(password, 10);
 
-        const userId = uuidv4();
-        db.run(
-          `INSERT INTO users (id, username, email, password_hash, avatar_url)
-           VALUES (?, ?, ?, ?, ?)`,
-          [userId, username, email, hash, avatar_url],
-          function (err) {
-            if (err) {
-              if (err.message.includes('UNIQUE constraint failed')) {
-                reject(new Error('Username or email already exists'));
-              } else {
-                reject(new Error(`Failed to create user: ${err.message}`));
-              }
-            } else {
-              resolve({ id: userId, username, email, avatar_url });
-            }
-          }
-        );
-      });
-    });
+      const userId = uuidv4();
+      const stmt = db.prepare(
+        `INSERT INTO users (id, username, email, password_hash, avatar_url)
+         VALUES (?, ?, ?, ?, ?)`
+      );
+
+      stmt.run(userId, username, email, hash, avatar_url);
+
+      return { id: userId, username, email, avatar_url };
+    } catch (error) {
+      if (error.message.includes('UNIQUE constraint failed')) {
+        throw new Error('Username or email already exists');
+      } else {
+        throw new Error(`Failed to create user: ${error.message}`);
+      }
+    }
   }
 
   /**
    * Find user by username and verify password
    */
-  static async authenticate(username, password) {
-    return new Promise((resolve, reject) => {
-      db.get(
-        `SELECT id, username, email, password_hash, avatar_url FROM users WHERE username = ?`,
-        [username],
-        (err, row) => {
-          if (err) {
-            reject(new Error(`Database error: ${err.message}`));
-            return;
-          }
-
-          if (!row) {
-            reject(new Error('User not found'));
-            return;
-          }
-
-          // Compare password with hash
-          bcrypt.compare(password, row.password_hash, (err, isMatch) => {
-            if (err) {
-              reject(new Error(`Password comparison failed: ${err.message}`));
-              return;
-            }
-
-            if (!isMatch) {
-              reject(new Error('Invalid password'));
-              return;
-            }
-
-            // Password matches, return user (without hash)
-            resolve({
-              id: row.id,
-              username: row.username,
-              email: row.email,
-              avatar_url: row.avatar_url
-            });
-          });
-        }
+  static authenticate(username, password) {
+    try {
+      const stmt = db.prepare(
+        `SELECT id, username, email, password_hash, avatar_url FROM users WHERE username = ?`
       );
-    });
+
+      const row = stmt.get(username);
+
+      if (!row) {
+        throw new Error('User not found');
+      }
+
+      // Compare password with hash synchronously
+      const isMatch = bcrypt.compareSync(password, row.password_hash);
+
+      if (!isMatch) {
+        throw new Error('Invalid password');
+      }
+
+      // Password matches, return user (without hash)
+      return {
+        id: row.id,
+        username: row.username,
+        email: row.email,
+        avatar_url: row.avatar_url
+      };
+    } catch (error) {
+      throw error;
+    }
   }
 
   /**
    * Find user by ID
    */
-  static async findById(userId) {
-    return new Promise((resolve, reject) => {
-      db.get(
-        `SELECT id, username, email, avatar_url, bio, created_at FROM users WHERE id = ?`,
-        [userId],
-        (err, row) => {
-          if (err) {
-            reject(new Error(`Database error: ${err.message}`));
-          } else {
-            resolve(row || null);
-          }
-        }
+  static findById(userId) {
+    try {
+      const stmt = db.prepare(
+        `SELECT id, username, email, avatar_url, bio, created_at FROM users WHERE id = ?`
       );
-    });
+
+      return stmt.get(userId) || null;
+    } catch (error) {
+      throw new Error(`Database error: ${error.message}`);
+    }
   }
 
   /**
    * Find user by username
    */
-  static async findByUsername(username) {
-    return new Promise((resolve, reject) => {
-      db.get(
-        `SELECT id, username, email, avatar_url, bio, created_at FROM users WHERE username = ?`,
-        [username],
-        (err, row) => {
-          if (err) {
-            reject(new Error(`Database error: ${err.message}`));
-          } else {
-            resolve(row || null);
-          }
-        }
+  static findByUsername(username) {
+    try {
+      const stmt = db.prepare(
+        `SELECT id, username, email, avatar_url, bio, created_at FROM users WHERE username = ?`
       );
-    });
+
+      return stmt.get(username) || null;
+    } catch (error) {
+      throw new Error(`Database error: ${error.message}`);
+    }
   }
 
   /**
    * Update user profile
    */
-  static async updateProfile(userId, updates) {
-    return new Promise((resolve, reject) => {
+  static updateProfile(userId, updates) {
+    try {
       const allowedFields = ['avatar_url', 'bio'];
       const fields = [];
       const values = [];
@@ -135,42 +110,38 @@ class User {
       });
 
       if (fields.length === 0) {
-        reject(new Error('No valid fields to update'));
-        return;
+        throw new Error('No valid fields to update');
       }
 
       values.push(userId);
       const query = `UPDATE users SET ${fields.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`;
 
-      db.run(query, values, (err) => {
-        if (err) {
-          reject(new Error(`Failed to update profile: ${err.message}`));
-        } else {
-          resolve({ success: true });
-        }
-      });
-    });
+      const stmt = db.prepare(query);
+      stmt.run(...values);
+
+      return { success: true };
+    } catch (error) {
+      throw new Error(`Failed to update profile: ${error.message}`);
+    }
   }
 
   /**
    * Get user statistics
    */
-  static async getStats(userId) {
-    return new Promise((resolve, reject) => {
-      db.get(
-        `SELECT COUNT(*) as total_messages FROM messages WHERE user_id = ?`,
-        [userId],
-        (err, row) => {
-          if (err) {
-            reject(new Error(`Database error: ${err.message}`));
-          } else {
-            resolve({
-              total_messages: row.total_messages || 0
-            });
-          }
-        }
+  static getStats(userId) {
+    try {
+      const stmt = db.prepare(
+        `SELECT COUNT(*) as total_messages FROM messages WHERE user_id = ?`
       );
-    });
+
+      const row = stmt.get(userId);
+
+      return {
+        total_messages: row.total_messages || 0
+      };
+    } catch (error) {
+      throw new Error(`Database error: ${error.message}`);
+    }
   }
 }
 

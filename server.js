@@ -155,7 +155,7 @@ async function getBotResponse(query) {
 /**
  * Sign up new user
  */
-app.post('/api/auth/signup', async (req, res) => {
+app.post('/api/auth/signup', (req, res) => {
   try {
     const { username, email, password } = req.body;
 
@@ -173,7 +173,7 @@ app.post('/api/auth/signup', async (req, res) => {
     }
 
     // Create user
-    const user = await User.create(username, email, password);
+    const user = User.create(username, email, password);
 
     // Generate JWT token
     const token = jwt.sign(
@@ -201,7 +201,7 @@ app.post('/api/auth/signup', async (req, res) => {
 /**
  * Log in user
  */
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', (req, res) => {
   try {
     const { username, password } = req.body;
 
@@ -211,7 +211,7 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     // Authenticate user
-    const user = await User.authenticate(username, password);
+    const user = User.authenticate(username, password);
 
     // Generate JWT token
     const token = jwt.sign(

@@ -1,21 +1,18 @@
-const sqlite3 = require('sqlite3').verbose();
+const Database = require('better-sqlite3');
 const path = require('path');
 
 // Create/connect to SQLite database
 const dbPath = path.join(__dirname, 'chat.db');
-const db = new sqlite3.Database(dbPath, (err) => {
-  if (err) {
-    console.error('❌ Error opening database:', err.message);
-    process.exit(1);
-  }
-  console.log('✅ Connected to SQLite database');
-});
+const db = new Database(dbPath);
+
+// Enable foreign keys
+db.pragma('foreign_keys = ON');
 
 // Initialize database schema
 function initializeDatabase() {
-  db.serialize(() => {
+  try {
     // Users table
-    db.run(`
+    db.exec(`
       CREATE TABLE IF NOT EXISTS users (
         id TEXT PRIMARY KEY,
         username TEXT UNIQUE NOT NULL,
@@ -26,16 +23,11 @@ function initializeDatabase() {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
-    `, (err) => {
-      if (err) {
-        console.error('❌ Error creating users table:', err.message);
-      } else {
-        console.log('✅ Users table initialized');
-      }
-    });
+    `);
+    console.log('✅ Users table initialized');
 
     // Messages table
-    db.run(`
+    db.exec(`
       CREATE TABLE IF NOT EXISTS messages (
         id TEXT PRIMARY KEY,
         user_id TEXT NOT NULL,
@@ -46,16 +38,11 @@ function initializeDatabase() {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id)
       )
-    `, (err) => {
-      if (err) {
-        console.error('❌ Error creating messages table:', err.message);
-      } else {
-        console.log('✅ Messages table initialized');
-      }
-    });
+    `);
+    console.log('✅ Messages table initialized');
 
     // Message reactions table
-    db.run(`
+    db.exec(`
       CREATE TABLE IF NOT EXISTS reactions (
         id TEXT PRIMARY KEY,
         message_id TEXT NOT NULL,
@@ -66,18 +53,20 @@ function initializeDatabase() {
         FOREIGN KEY (message_id) REFERENCES messages(id),
         FOREIGN KEY (user_id) REFERENCES users(id)
       )
-    `, (err) => {
-      if (err) {
-        console.error('❌ Error creating reactions table:', err.message);
-      } else {
-        console.log('✅ Reactions table initialized');
-      }
-    });
-  });
+    `);
+    console.log('✅ Reactions table initialized');
+
+    console.log('✅ Connected to SQLite database');
+  } catch (error) {
+    console.error('❌ Error initializing database:', error.message);
+    process.exit(1);
+  }
 }
 
 // Run migrations on startup
 initializeDatabase();
+
+module.exports = db;
 
 // Export database connection
 module.exports = db;
