@@ -30,15 +30,14 @@ const MESSAGE_TYPE = {
 
 /**
  * Sanitize HTML to prevent XSS
+ * Removes HTML tags but preserves special characters since we use textContent
  */
 function sanitizeInput(text) {
   if (typeof text !== 'string') return '';
+  // Remove HTML tags but keep special characters as-is
+  // textContent is safe from XSS and won't parse HTML entities
   return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/\"/g, '&quot;')
-    .replace(/'/g, '&#039;')
+    .replace(/<[^>]*>/g, '')  // Remove HTML tags
     .trim();
 }
 
