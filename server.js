@@ -110,6 +110,37 @@ function validateGifUrl(url) {
 }
 
 /**
+ * Split long response into multiple messages
+ * Splits on sentence boundaries to keep messages readable
+ */
+function splitLongResponse(text, maxLength = 300) {
+  if (text.length <= maxLength) {
+    return [text];
+  }
+
+  const messages = [];
+  const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+  let currentMessage = '';
+
+  for (const sentence of sentences) {
+    if ((currentMessage + sentence).length <= maxLength) {
+      currentMessage += sentence;
+    } else {
+      if (currentMessage) {
+        messages.push(currentMessage.trim());
+      }
+      currentMessage = sentence;
+    }
+  }
+
+  if (currentMessage) {
+    messages.push(currentMessage.trim());
+  }
+
+  return messages;
+}
+
+/**
  * Format timestamp
  */
 function formatTimestamp() {
@@ -441,17 +472,22 @@ io.on('connection', (socket) => {
           conversationHistory.shift();
         }
 
-        // Send bot response
-        const botMessage = {
-          id: Date.now() + 1,
-          nickname: 'epstein',
-          timestamp: formatTimestamp(),
-          type: MESSAGE_TYPE.TEXT,
-          content: botResponse
-        };
-
-        io.emit('receive_message', botMessage);
-        console.log(`[${botMessage.timestamp}] epstein: ${botResponse}`);
+        // Send bot response (split into multiple messages if too long)
+        const responseParts = splitLongResponse(botResponse, 300);
+        
+        responseParts.forEach((part, index) => {
+          const botMessage = {
+            id: Date.now() + 1 + index,
+            nickname: 'epstein',
+            timestamp: formatTimestamp(),
+            type: MESSAGE_TYPE.TEXT,
+            content: part
+          };
+          
+          io.emit('receive_message', botMessage);
+          console.log(`[${botMessage.timestamp}] epstein: ${part}`);
+        });
+        
         return;
       }
 
