@@ -4,6 +4,9 @@ const http = require('http');
 const socketIO = require('socket.io');
 const path = require('path');
 const { Groq } = require('groq-sdk');
+const jwt = require('jsonwebtoken');
+const db = require('./database');
+const User = require('./models/User');
 
 const app = express();
 const server = http.createServer(app);
@@ -14,8 +17,12 @@ const io = socketIO(server, {
   }
 });
 
-// Serve static files from the 'public' directory
+// Middleware
+app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+
+// JWT Secret (should be in .env in production)
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
 // Initialize Groq client
 let groq;
@@ -142,6 +149,123 @@ async function getBotResponse(query) {
 }
 
 // ========================================
+// AUTHENTICATION ENDPOINTS
+// ========================================
+
+/**
+ * Sign up new user
+ */
+app.post('/api/auth/signup', async (req, res) => {
+  try {
+    const { username, email, password } = req.body;
+
+    // Validate input
+    if (!username || !email || !password) {
+      return res.status(400).json({ error: 'Username, email, and password required' });
+    }
+
+    if (username.length < 3 || username.length > 20) {
+      return res.status(400).json({ error: 'Username must be 3-20 characters' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+
+    // Create user
+    const user = await User.create(username, email, password);
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { userId: user.id, username: user.username },
+      JWT_SECRET,
+      { expiresIn: '30d' }
+    );
+
+    console.log(`✅ New user signed up: ${username}`);
+    res.json({ 
+      success: true, 
+      token, 
+      user: { 
+        id: user.id, 
+        username: user.username, 
+        email: user.email 
+      } 
+    });
+  } catch (error) {
+    console.error('❌ Signup error:', error.message);
+    res.status(400).json({ error: error.message });
+  }
+});
+
+/**
+ * Log in user
+ */
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    // Validate input
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Username and password required' });
+    }
+
+    // Authenticate user
+    const user = await User.authenticate(username, password);
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { userId: user.id, username: user.username },
+      JWT_SECRET,
+      { expiresIn: '30d' }
+    );
+
+    console.log(`✅ User logged in: ${username}`);
+    res.json({ 
+      success: true, 
+      token, 
+      user: { 
+        id: user.id, 
+        username: user.username, 
+        email: user.email,
+        avatar_url: user.avatar_url
+      } 
+    });
+  } catch (error) {
+    console.error('❌ Login error:', error.message);
+    res.status(401).json({ error: error.message });
+  }
+});
+
+/**
+ * Validate token
+ */
+app.get('/api/auth/validate', (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'No token provided' });
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+    res.json({ valid: true, user: decoded });
+  } catch (error) {
+    res.status(401).json({ valid: false, error: 'Invalid token' });
+  }
+});
+
+/**
+ * Middleware to verify JWT token
+ */
+function verifyToken(token) {
+  try {
+    return jwt.verify(token, JWT_SECRET);
+  } catch (error) {
+    return null;
+  }
+}
+
+// ========================================
 // SOCKET.IO CONNECTION HANDLING
 // ========================================
 
@@ -149,9 +273,55 @@ io.on('connection', (socket) => {
   console.log('New client connected:', socket.id);
 
   /**
-   * Handle user joining with nickname
+   * Handle user authentication with JWT
+   */
+  socket.on('auth', (data) => {
+    const { token } = data;
+    if (!token) {
+      socket.emit('error', { message: 'Authentication required' });
+      return;
+    }
+
+    const decoded = verifyToken(token);
+    if (!decoded) {
+      socket.emit('error', { message: 'Invalid or expired token' });
+      return;
+    }
+
+    // Store authenticated user
+    users.set(socket.id, {
+      socketId: socket.id,
+      userId: decoded.userId,
+      username: decoded.username,
+      joinedAt: new Date(),
+      isTyping: false
+    });
+
+    const activeUsers = Array.from(users.values()).map(u => u.username);
+
+    io.emit('user_connected', {
+      username: decoded.username,
+      userCount: users.size,
+      activeUsers: activeUsers
+    });
+
+    console.log(`${decoded.username} authenticated. Total users: ${users.size}`);
+
+    socket.emit('auth_success', { username: decoded.username });
+    socket.emit('update_users', { activeUsers });
+    socket.broadcast.emit('update_users', { activeUsers });
+  });
+
+  /**
+   * Handle legacy join with nickname (for backward compatibility)
+   * Will be removed once all clients use JWT auth
    */
   socket.on('join', (nickname) => {
+    // If user already authenticated via token, skip
+    if (users.has(socket.id)) {
+      return;
+    }
+
     const validatedNickname = validateNickname(nickname);
     if (!validatedNickname) {
       socket.emit('error', { message: 'Invalid nickname' });
@@ -159,16 +329,17 @@ io.on('connection', (socket) => {
     }
 
     users.set(socket.id, {
-      id: socket.id,
-      nickname: validatedNickname,
+      socketId: socket.id,
+      userId: null,
+      username: validatedNickname,
       joinedAt: new Date(),
       isTyping: false
     });
 
-    const activeUsers = Array.from(users.values()).map(u => u.nickname);
+    const activeUsers = Array.from(users.values()).map(u => u.username);
 
     io.emit('user_connected', {
-      nickname: validatedNickname,
+      username: validatedNickname,
       userCount: users.size,
       activeUsers: activeUsers
     });
@@ -197,7 +368,7 @@ io.on('connection', (socket) => {
 
     let message = {
       id: Date.now(),
-      nickname: user.nickname,
+      nickname: user.username,
       timestamp: formatTimestamp(),
       type: messageData.type
     };
@@ -274,7 +445,7 @@ io.on('connection', (socket) => {
     // Clear typing indicator
     if (user.isTyping) {
       user.isTyping = false;
-      io.emit('user_stop_typing', { nickname: user.nickname });
+      io.emit('user_stop_typing', { nickname: user.username });
     }
 
     // Log to console
@@ -288,7 +459,7 @@ io.on('connection', (socket) => {
     const user = users.get(socket.id);
     if (user) {
       user.isTyping = true;
-      socket.broadcast.emit('user_typing', { nickname: user.nickname });
+      socket.broadcast.emit('user_typing', { nickname: user.username });
     }
   });
 
@@ -299,7 +470,7 @@ io.on('connection', (socket) => {
     const user = users.get(socket.id);
     if (user) {
       user.isTyping = false;
-      socket.broadcast.emit('user_stop_typing', { nickname: user.nickname });
+      socket.broadcast.emit('user_stop_typing', { nickname: user.username });
     }
   });
 
@@ -309,7 +480,7 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     const user = users.get(socket.id);
     if (user) {
-      const nickname = user.nickname;
+      const nickname = user.username;
       users.delete(socket.id);
 
       const activeUsers = Array.from(users.values()).map(u => u.nickname);

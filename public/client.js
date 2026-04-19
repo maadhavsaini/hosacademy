@@ -11,6 +11,7 @@ const socket = io();
 const GIPHY_API_KEY = 'kspHR9RERwsOxhk5kMHvdTT6cyzYBUpd';
 const GIPHY_SEARCH_URL = 'https://api.giphy.com/v1/gifs/search';
 const MAX_MESSAGE_LENGTH = 500;
+const API_BASE = window.location.origin;
 
 // Message types enum
 const MESSAGE_TYPE = {
@@ -23,6 +24,8 @@ const MESSAGE_TYPE = {
 // ========================================
 
 let currentNickname = '';
+let currentUserId = '';
+let jwtToken = localStorage.getItem('jwtToken');
 let isConnected = false;
 let isAtBottom = true;
 let typingUsers = new Set();
@@ -34,9 +37,17 @@ let gifSearchTimeout = null;
 // DOM ELEMENTS
 // ========================================
 
-// Login Screen Elements
-const loginScreen = document.getElementById('loginScreen');
+// Auth Screen Elements
+const authScreen = document.getElementById('authScreen');
 const loginForm = document.getElementById('loginForm');
+const signupForm = document.getElementById('signupForm');
+const authTabBtns = document.querySelectorAll('.auth-tab-btn');
+const loginMessage = document.getElementById('loginMessage');
+const signupMessage = document.getElementById('signupMessage');
+
+// Legacy Login Screen Elements (for fallback)
+const legacyLoginScreen = document.getElementById('loginScreen');
+const legacyLoginForm = document.getElementById('legacyLoginForm');
 const nicknameInput = document.getElementById('nicknameInput');
 
 // Chat App Elements
@@ -249,6 +260,217 @@ document.addEventListener('keydown', (e) => {
 });
 
 
+// ========================================
+// AUTHENTICATION FUNCTIONALITY
+// ========================================
+
+/**
+ * Check if user is already logged in via JWT token
+ */
+async function checkExistingLogin() {
+  if (jwtToken) {
+    try {
+      const response = await fetch(`${API_BASE}/api/auth/validate`, {
+        headers: {
+          'Authorization': `Bearer ${jwtToken}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        currentNickname = data.user.username;
+        currentUserId = data.user.userId;
+        authScreen.classList.add('hidden');
+        chatApp.classList.remove('hidden');
+        connectWithToken();
+        return true;
+      }
+    } catch (error) {
+      console.error('Token validation failed:', error);
+      localStorage.removeItem('jwtToken');
+      jwtToken = null;
+    }
+  }
+  return false;
+}
+
+/**
+ * Connect to Socket.io with JWT token
+ */
+function connectWithToken() {
+  socket.emit('auth', { token: jwtToken });
+}
+
+/**
+ * Handle signup form submission
+ */
+signupForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const username = document.getElementById('signupUsername').value.trim();
+  const email = document.getElementById('signupEmail').value.trim();
+  const password = document.getElementById('signupPassword').value;
+  const passwordConfirm = document.getElementById('signupPasswordConfirm').value;
+
+  // Validation
+  if (!username || !email || !password) {
+    signupMessage.textContent = 'All fields are required';
+    signupMessage.classList.add('error');
+    return;
+  }
+
+  if (username.length < 3 || username.length > 20) {
+    signupMessage.textContent = 'Username must be 3-20 characters';
+    signupMessage.classList.add('error');
+    return;
+  }
+
+  if (password.length < 6) {
+    signupMessage.textContent = 'Password must be at least 6 characters';
+    signupMessage.classList.add('error');
+    return;
+  }
+
+  if (password !== passwordConfirm) {
+    signupMessage.textContent = 'Passwords do not match';
+    signupMessage.classList.add('error');
+    return;
+  }
+
+  try {
+    signupMessage.classList.remove('error', 'success');
+    signupMessage.textContent = 'Creating account...';
+
+    const response = await fetch(`${API_BASE}/api/auth/signup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, email, password })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error);
+    }
+
+    // Store JWT token
+    jwtToken = data.token;
+    localStorage.setItem('jwtToken', jwtToken);
+    currentNickname = data.user.username;
+    currentUserId = data.user.id;
+
+    // Show success and transition to chat
+    signupMessage.textContent = '✅ Account created! Entering chat...';
+    signupMessage.classList.add('success');
+
+    setTimeout(() => {
+      authScreen.classList.add('hidden');
+      chatApp.classList.remove('hidden');
+      connectWithToken();
+    }, 500);
+  } catch (error) {
+    signupMessage.textContent = error.message;
+    signupMessage.classList.add('error');
+    console.error('Signup error:', error);
+  }
+});
+
+/**
+ * Handle new login form submission (JWT-based)
+ */
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const username = document.getElementById('loginUsername').value.trim();
+  const password = document.getElementById('loginPassword').value;
+
+  // Validation
+  if (!username || !password) {
+    loginMessage.textContent = 'Username and password required';
+    loginMessage.classList.add('error');
+    return;
+  }
+
+  try {
+    loginMessage.classList.remove('error', 'success');
+    loginMessage.textContent = 'Logging in...';
+
+    const response = await fetch(`${API_BASE}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error);
+    }
+
+    // Store JWT token
+    jwtToken = data.token;
+    localStorage.setItem('jwtToken', jwtToken);
+    currentNickname = data.user.username;
+    currentUserId = data.user.id;
+
+    // Show success and transition to chat
+    loginMessage.textContent = '✅ Login successful! Entering chat...';
+    loginMessage.classList.add('success');
+
+    setTimeout(() => {
+      authScreen.classList.add('hidden');
+      chatApp.classList.remove('hidden');
+      connectWithToken();
+    }, 500);
+  } catch (error) {
+    loginMessage.textContent = error.message;
+    loginMessage.classList.add('error');
+    console.error('Login error:', error);
+  }
+});
+
+/**
+ * Handle auth tab switching
+ */
+authTabBtns.forEach((btn) => {
+  btn.addEventListener('click', (e) => {
+    const targetTab = btn.dataset.tab;
+
+    // Update active tab button
+    authTabBtns.forEach((b) => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    // Update active form
+    document.querySelectorAll('.auth-form').forEach((form) => {
+      form.classList.remove('active');
+    });
+
+    if (targetTab === 'login') {
+      loginForm.classList.add('active');
+      loginMessage.textContent = '';
+      loginMessage.classList.remove('error', 'success');
+    } else {
+      signupForm.classList.add('active');
+      signupMessage.textContent = '';
+      signupMessage.classList.remove('error', 'success');
+    }
+  });
+});
+
+/**
+ * Logout function
+ */
+function logout() {
+  jwtToken = null;
+  localStorage.removeItem('jwtToken');
+  currentNickname = '';
+  currentUserId = '';
+  users.clear();
+  messagesContainer.innerHTML = '';
+  authScreen.classList.remove('hidden');
+  chatApp.classList.add('hidden');
+  socket.disconnect();
+}
 
 // ========================================
 // LOGIN SCREEN FUNCTIONALITY
@@ -601,7 +823,7 @@ function updateTypingIndicator() {
  * Handle user connection notification
  */
 socket.on('user_connected', (data) => {
-  const notificationText = `✓ ${data.nickname} joined the chat`;
+  const notificationText = `✓ ${data.username} joined the chat`;
   addSystemNotification(notificationText);
   userCountDisplay.textContent = data.userCount;
 });
@@ -610,12 +832,12 @@ socket.on('user_connected', (data) => {
  * Handle user disconnection notification
  */
 socket.on('user_disconnected', (data) => {
-  const notificationText = `✗ ${data.nickname} left the chat`;
+  const notificationText = `✗ ${data.username} left the chat`;
   addSystemNotification(notificationText);
   userCountDisplay.textContent = data.userCount;
   
   // Remove from typing users
-  typingUsers.delete(data.nickname);
+  typingUsers.delete(data.username);
   updateTypingIndicator();
 });
 
@@ -658,11 +880,21 @@ socket.on('error', (error) => {
 /**
  * Initialize the application
  */
-function init() {
-  nicknameInput.focus();
+async function init() {
+  console.log('🚀 Real-time Chat Application Initializing...');
+
+  // Check if user is already logged in with JWT
+  const existingLogin = await checkExistingLogin();
+
+  if (!existingLogin) {
+    // No existing login, show auth screen
+    authScreen.classList.remove('hidden');
+    chatApp.classList.add('hidden');
+    document.getElementById('loginUsername').focus();
+  }
+
   updateSendButtonState();
-  console.log('Real-time Chat Application Initialized');
-  console.log('Waiting for nickname input...');
+  console.log('✅ Real-time Chat Application Initialized');
 }
 
 if (document.readyState === 'loading') {

@@ -7,14 +7,113 @@
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <!-- Login Screen (Nickname Entry Modal) -->
-    <div id="loginScreen" class="login-screen">
+    <!-- Login/Signup Screen -->
+    <div id="authScreen" class="auth-screen">
+      <div class="auth-container">
+        <div class="auth-header">
+          <h1>Welcome to Chat</h1>
+          <p>Connect with friends instantly</p>
+        </div>
+
+        <!-- Auth Tabs -->
+        <div class="auth-tabs">
+          <button type="button" class="auth-tab-btn active" data-tab="login">
+            Login
+          </button>
+          <button type="button" class="auth-tab-btn" data-tab="signup">
+            Sign Up
+          </button>
+        </div>
+
+        <!-- Login Form -->
+        <form id="loginForm" class="auth-form active">
+          <div class="form-group">
+            <label for="loginUsername">Username</label>
+            <input
+              type="text"
+              id="loginUsername"
+              placeholder="Enter your username"
+              autocomplete="off"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label for="loginPassword">Password</label>
+            <input
+              type="password"
+              id="loginPassword"
+              placeholder="Enter your password"
+              autocomplete="off"
+              required
+            />
+          </div>
+          <button type="submit" class="auth-btn">Login</button>
+          <p class="auth-message" id="loginMessage"></p>
+        </form>
+
+        <!-- Signup Form -->
+        <form id="signupForm" class="auth-form">
+          <div class="form-group">
+            <label for="signupUsername">Username</label>
+            <input
+              type="text"
+              id="signupUsername"
+              placeholder="Choose a username (3-20 characters)"
+              autocomplete="off"
+              minlength="3"
+              maxlength="20"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label for="signupEmail">Email</label>
+            <input
+              type="email"
+              id="signupEmail"
+              placeholder="Enter your email"
+              autocomplete="off"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label for="signupPassword">Password</label>
+            <input
+              type="password"
+              id="signupPassword"
+              placeholder="Choose a password (min 6 characters)"
+              autocomplete="off"
+              minlength="6"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label for="signupPasswordConfirm">Confirm Password</label>
+            <input
+              type="password"
+              id="signupPasswordConfirm"
+              placeholder="Confirm your password"
+              autocomplete="off"
+              required
+            />
+          </div>
+          <button type="submit" class="auth-btn">Create Account</button>
+          <p class="auth-message" id="signupMessage"></p>
+        </form>
+
+        <p class="auth-hint">
+          Your login credentials are securely stored. No username stealing! 🔒
+        </p>
+      </div>
+    </div>
+
+    <!-- Old Login Screen (for backward compatibility, hidden) -->
+    <div id="loginScreen" class="login-screen hidden">
       <div class="login-container">
         <div class="login-header">
           <h1>Welcome to Chat</h1>
           <p>Enter your nickname to join the conversation</p>
         </div>
-        <form id="loginForm" class="login-form">
+        <form id="legacyLoginForm" class="login-form">
           <input
             type="text"
             id="nicknameInput"
