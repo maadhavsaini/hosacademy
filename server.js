@@ -152,7 +152,7 @@ async function getBotResponse(query, history = []) {
     
     const response = await groq.chat.completions.create({
       model: 'llama-3.1-8b-instant',
-      max_tokens: 256,
+      max_tokens: 512,
       messages: messages
     });
 
