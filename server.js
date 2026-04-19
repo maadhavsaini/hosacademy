@@ -64,6 +64,9 @@ const MAX_HISTORY = 20;
 // Message transformation state
 let messageTransformWord = null;
 
+// Global fun mode state (affects all users)
+let globalFunMode = 'none'; // 'dheerajspeak', 'harditspeak', 'rattanspeak', or 'none'
+
 // Message types
 const MESSAGE_TYPE = {
   TEXT: 'text',
@@ -519,6 +522,7 @@ io.on('connection', (socket) => {
 
     socket.emit('auth_success', { username: decoded.username });
     socket.emit('update_users', { activeUsers });
+    socket.emit('fun_mode_changed', { mode: globalFunMode, username: 'System' });
     socket.broadcast.emit('update_users', { activeUsers });
   });
 
@@ -557,6 +561,7 @@ io.on('connection', (socket) => {
     console.log(`${validatedNickname} joined. Total users: ${users.size}`);
 
     socket.emit('update_users', { activeUsers });
+    socket.emit('fun_mode_changed', { mode: globalFunMode, username: 'System' });
     socket.broadcast.emit('update_users', { activeUsers });
   });
 
@@ -933,11 +938,16 @@ io.on('connection', (socket) => {
    * Handle fun mode changes
    */
   socket.on('set_fun_mode', (data) => {
-    // Broadcast fun mode change to all clients
+    const { mode, username } = data;
+    globalFunMode = mode;
+    
+    // Broadcast to all clients
     io.emit('fun_mode_changed', {
-      username: data.username,
-      mode: data.mode
+      mode: mode,
+      username: username
     });
+    
+    console.log(`🎉 Fun mode changed to: ${mode} (by ${username})`);
   });
 
   /**

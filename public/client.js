@@ -43,10 +43,8 @@ let messageTransformActive = false;
 let userIdMap = {}; // Maps username to userId for profile lookups
 const MESSAGE_GROUP_TIME = 5 * 60 * 1000; // 5 minutes in milliseconds
 
-// Fun mode states
-let dheerajspeakActive = false;
-let harditspeakActive = false;
-let rattanspeakActive = false;
+// Global fun mode state (affects all users)
+let activeFunMode = 'none'; // 'dheerajspeak', 'harditspeak', 'rattanspeak', or 'none'
 
 // ========================================
 // DOM ELEMENTS
@@ -614,7 +612,7 @@ messageForm.addEventListener('submit', (e) => {
   }
 
   // Handle Rattanspeak mode - silently discard message
-  if (rattanspeakActive) {
+  if (activeFunMode === 'rattanspeak') {
     // Random chance (1/1000000) for Rattan to say "hi"
     const randomNumber = Math.floor(Math.random() * 1000000) + 1;
     if (randomNumber === 676767) {
@@ -740,12 +738,12 @@ function shouldShowMessageHeader(message) {
 }
 
 /**
- * Transform message based on active fun modes
+ * Transform message based on active global fun mode
  * @param {String} content - Original message content
  * @returns {String} Transformed content
  */
 function transformMessageContent(content) {
-  if (dheerajspeakActive) {
+  if (activeFunMode === 'dheerajspeak') {
     // Each word ends with -poo
     return content
       .split(/(\s+)/)
@@ -757,7 +755,7 @@ function transformMessageContent(content) {
       .join('');
   }
   
-  if (harditspeakActive) {
+  if (activeFunMode === 'harditspeak') {
     // Words on new lines with interjections
     const interjections = ['um', 'uh', 'woah'];
     const words = content.split(/\s+/);
@@ -839,9 +837,9 @@ function addMessage(message, isOwn = false) {
   const content = document.createElement('div');
   content.className = 'message-content';
 
-  // Transform message content based on fun modes (but not for Rattanspeak - those messages don't show)
+  // Transform message content based on global fun mode (but not for Rattanspeak - those messages don't show)
   let displayContent = message.content;
-  if (!rattanspeakActive) {
+  if (activeFunMode !== 'rattanspeak') {
     displayContent = transformMessageContent(displayContent);
   }
 
@@ -1622,45 +1620,36 @@ quietModeBtn.addEventListener('click', () => {
  * Toggle Dheerajspeak mode
  */
 dheerajspeakBtn.addEventListener('click', () => {
-  dheerajspeakActive = !dheerajspeakActive;
-  harditspeakActive = false;
-  rattanspeakActive = false;
+  const newMode = activeFunMode === 'dheerajspeak' ? 'none' : 'dheerajspeak';
   socket.emit('set_fun_mode', {
     username: currentNickname,
-    mode: dheerajspeakActive ? 'dheerajspeak' : 'none'
+    mode: newMode
   });
   funModal.classList.add('hidden');
-  addSystemNotification(`${dheerajspeakActive ? '💩 Dheerajspeak ACTIVATED! Every word ends with -poo!' : '💩 Dheerajspeak deactivated'}`);
 });
 
 /**
  * Toggle Harditspeak mode
  */
 harditspeakBtn.addEventListener('click', () => {
-  harditspeakActive = !harditspeakActive;
-  dheerajspeakActive = false;
-  rattanspeakActive = false;
+  const newMode = activeFunMode === 'harditspeak' ? 'none' : 'harditspeak';
   socket.emit('set_fun_mode', {
     username: currentNickname,
-    mode: harditspeakActive ? 'harditspeak' : 'none'
+    mode: newMode
   });
   funModal.classList.add('hidden');
-  addSystemNotification(`${harditspeakActive ? '📺 Harditspeak ACTIVATED! Words on new lines!' : '📺 Harditspeak deactivated'}`);
 });
 
 /**
  * Toggle Rattanspeak mode
  */
 rattanspeakBtn.addEventListener('click', () => {
-  rattanspeakActive = !rattanspeakActive;
-  dheerajspeakActive = false;
-  harditspeakActive = false;
+  const newMode = activeFunMode === 'rattanspeak' ? 'none' : 'rattanspeak';
   socket.emit('set_fun_mode', {
     username: currentNickname,
-    mode: rattanspeakActive ? 'rattanspeak' : 'none'
+    mode: newMode
   });
   funModal.classList.add('hidden');
-  addSystemNotification(`${rattanspeakActive ? '🤐 Rattanspeak ACTIVATED! Messages are silent... waiting for the 1/1M chance...' : '🤐 Rattanspeak deactivated'}`);
 });
 
 /**
@@ -1843,9 +1832,18 @@ socket.on('transform_message_stop', () => {
  * Handle fun mode changes
  */
 socket.on('fun_mode_changed', (data) => {
-  // Just acknowledge the mode change - all clients will update based on their local state
-  // This is mainly for logging/debugging on the server side
-  console.log(`Fun mode changed by ${data.username}: ${data.mode}`);
+  const { mode, username } = data;
+  activeFunMode = mode;
+  
+  if (mode === 'none') {
+    addSystemNotification(`✨ Fun mode disabled by ${username}`);
+  } else if (mode === 'dheerajspeak') {
+    addSystemNotification(`💩 ${username} activated Dheerajspeak! Every word ends with -poo!`);
+  } else if (mode === 'harditspeak') {
+    addSystemNotification(`📺 ${username} activated Harditspeak! Words on new lines!`);
+  } else if (mode === 'rattanspeak') {
+    addSystemNotification(`🤐 ${username} activated Rattanspeak! Messages are silent...`);
+  }
 });
 
 /**
