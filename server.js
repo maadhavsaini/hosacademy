@@ -113,7 +113,7 @@ async function getBotResponse(query) {
           content: query
         }
       ],
-      system: 'You are a fun, slightly unhinged AI bot named Placeholder participating in a group chat. Keep responses brief (1-2 sentences max), funny, and casual. You love emojis and internet culture.'
+      system: 'You are a fun, slightly unhinged AI bot named epstein participating in a group chat. Keep responses brief (1-2 sentences max), funny, and casual. You love emojis and internet culture.'
     });
 
     // Extract the text from the response
@@ -194,22 +194,22 @@ io.on('connection', (socket) => {
       }
       message.content = validatedText;
 
-      // Check if message starts with /placeholder command
-      if (validatedText.startsWith('/placeholder ')) {
+      // Check if message starts with /epstein command
+      if (validatedText.startsWith('/epstein ')) {
         // Broadcast the original user message first
         io.emit('receive_message', message);
 
         // Extract the query
-        const query = validatedText.substring('/placeholder '.length).trim();
+        const query = validatedText.substring('/epstein '.length).trim();
 
         if (query.length === 0) {
           // Send error message from bot
           const errorBotMessage = {
             id: Date.now() + 1,
-            nickname: '🤖 Placeholder',
+            nickname: 'epstein',
             timestamp: formatTimestamp(),
             type: MESSAGE_TYPE.TEXT,
-            content: 'Hey! You gotta ask me something. /placeholder [your question]'
+            content: 'Hey! You gotta ask me something. /epstein [your question]'
           };
           io.emit('receive_message', errorBotMessage);
           return;
@@ -221,14 +221,14 @@ io.on('connection', (socket) => {
         // Send bot response
         const botMessage = {
           id: Date.now() + 1,
-          nickname: '🤖 Placeholder',
+          nickname: 'epstein',
           timestamp: formatTimestamp(),
           type: MESSAGE_TYPE.TEXT,
           content: botResponse
         };
 
         io.emit('receive_message', botMessage);
-        console.log(`[${botMessage.timestamp}] 🤖 Placeholder: ${botResponse}`);
+        console.log(`[${botMessage.timestamp}] epstein: ${botResponse}`);
         return;
       }
 
@@ -329,7 +329,7 @@ server.listen(PORT, () => {
   console.log(`================================================`);
   console.log(`Server running at: http://localhost:${PORT}`);
   console.log(`Socket.io listening on port ${PORT}`);
-  console.log(`🤖 Placeholder AI enabled with Groq API`);
+  console.log(`🤖 epstein AI enabled with Groq API`);
   console.log(`================================================\n`);
 });
 

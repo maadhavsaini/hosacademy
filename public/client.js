@@ -410,7 +410,7 @@ messageInput.addEventListener('keydown', (e) => {
  * @param {Boolean} isOwn - Whether the message is from the current user
  */
 function addMessage(message, isOwn = false) {
-  const isBot = message.nickname === '🤖 Placeholder';
+  const isBot = message.nickname === 'epstein';
   const messageElement = document.createElement('div');
   messageElement.className = `message user-message ${isOwn ? 'own' : 'other'} ${isBot ? 'bot' : ''}`;
 
