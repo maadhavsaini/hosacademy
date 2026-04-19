@@ -946,7 +946,6 @@ function showUserProfile(userId, username) {
   const displayProfile = (data) => {
     // Update view mode
     document.getElementById('profileUsername').textContent = username;
-    document.getElementById('profileMessageCount').textContent = data.messageCount || 0;
     document.getElementById('profileJoinDate').textContent = new Date(data.joinedAt).toLocaleDateString() || '-';
     document.getElementById('profileBio').textContent = data.bio || 'No bio';
     
