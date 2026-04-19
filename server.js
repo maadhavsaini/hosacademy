@@ -7,6 +7,7 @@ const { Groq } = require('groq-sdk');
 const jwt = require('jsonwebtoken');
 const db = require('./database');
 const User = require('./models/User');
+const PREP_MESSAGE = require('./prep-message');
 
 const app = express();
 const server = http.createServer(app);
@@ -129,7 +130,7 @@ async function getBotResponse(query) {
       messages: [
         {
           role: 'system',
-          content: 'You are a fun, slightly unhinged AI bot named epstein participating in a group chat. Keep responses brief (1-2 sentences max), funny, and casual. You love emojis and internet culture.'
+          content: PREP_MESSAGE
         },
         {
           role: 'user',
