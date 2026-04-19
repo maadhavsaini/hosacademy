@@ -756,8 +756,8 @@ function transformMessageContent(content) {
   }
   
   if (activeFunMode === 'harditspeak') {
-    // Words on new lines with interjections
-    const interjections = ['um', 'uh', 'woah'];
+    // Words on new lines with interjections, woah at the end
+    const interjections = ['um', 'uh'];
     const words = content.split(/\s+/);
     let result = [];
     words.forEach((word, index) => {
@@ -766,6 +766,7 @@ function transformMessageContent(content) {
       }
       result.push(word);
     });
+    result.push('woah');
     return result.join('\n');
   }
   
