@@ -35,6 +35,15 @@
       <!-- Header -->
       <header class="chat-header">
         <div class="header-content">
+          <button
+            class="hamburger"
+            id="hamburgerBtn"
+            aria-label="Toggle sidebar"
+          >
+            <span></span>
+            <span></span>
+            <span></span>
+          </button>
           <h1 class="app-title">💬 Real-Time Chat</h1>
           <div class="user-info">
             <span class="current-user"
@@ -50,7 +59,7 @@
       <!-- Main Content Area -->
       <div class="chat-container">
         <!-- Sidebar - Active Users -->
-        <aside class="sidebar">
+        <aside class="sidebar" id="sidebar">
           <div class="sidebar-header">
             <h2>Active Users</h2>
             <span class="online-indicator" id="onlineCount">0</span>
@@ -72,7 +81,11 @@
 
           <!-- Message Input Area -->
           <div class="input-area">
+            <div class="typing-indicator" id="typingIndicator"></div>
             <form id="messageForm" class="message-form">
+              <button type="button" class="gif-btn" id="gifBtn" title="Add GIF">
+                🎬
+              </button>
               <input
                 type="text"
                 id="messageInput"
@@ -85,6 +98,28 @@
             </form>
           </div>
         </main>
+      </div>
+    </div>
+
+    <!-- GIF Search Modal -->
+    <div id="gifModal" class="gif-modal">
+      <div class="gif-modal-content">
+        <div class="gif-modal-header">
+          <h2>Search GIFs</h2>
+          <button class="gif-modal-close" id="gifModalClose">&times;</button>
+        </div>
+        <div class="gif-search-area">
+          <input
+            type="text"
+            id="gifSearchInput"
+            class="gif-search-input"
+            placeholder="Search for GIFs..."
+            autocomplete="off"
+          />
+        </div>
+        <div class="gif-results" id="gifResults">
+          <p class="gif-loading-text">Search for GIFs to get started</p>
+        </div>
       </div>
     </div>
 

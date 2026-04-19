@@ -18,28 +18,65 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Store active users
 const users = new Map();
 
+// Utility function to sanitize HTML/XSS attacks
+function sanitizeInput(text) {
+  if (typeof text !== 'string') return '';
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+    .trim();
+}
+
+// Utility function to validate and clean nickname
+function validateNickname(nickname) {
+  if (!nickname || typeof nickname !== 'string') return null;
+  const cleaned = nickname.trim();
+  if (cleaned.length < 2 || cleaned.length > 20) return null;
+  if (!/^[a-zA-Z0-9\s_-]+$/.test(cleaned)) return null;
+  return sanitizeInput(cleaned);
+}
+
+// Utility function to validate message
+function validateMessage(text) {
+  if (!text || typeof text !== 'string') return null;
+  const cleaned = text.trim();
+  if (cleaned.length === 0 || cleaned.length > 500) return null;
+  return sanitizeInput(cleaned);
+}
+
 // Socket.io connection handling
 io.on('connection', (socket) => {
   console.log('New client connected:', socket.id);
 
   // Handle user joining with nickname
   socket.on('join', (nickname) => {
+    // Validate and sanitize nickname
+    const validatedNickname = validateNickname(nickname);
+    if (!validatedNickname) {
+      socket.emit('error', { message: 'Invalid nickname' });
+      return;
+    }
+
     // Store user info
     users.set(socket.id, {
       id: socket.id,
-      nickname: nickname,
-      joinedAt: new Date()
+      nickname: validatedNickname,
+      joinedAt: new Date(),
+      isTyping: false
     });
 
     // Notify all clients about new user
     io.emit('user_connected', {
-      nickname: nickname,
+      nickname: validatedNickname,
       userCount: users.size,
       activeUsers: Array.from(users.values()).map(u => u.nickname)
     });
 
     // Log to server console
-    console.log(`${nickname} joined the chat. Total users: ${users.size}`);
+    console.log(`${validatedNickname} joined the chat. Total users: ${users.size}`);
 
     // Send current user list to the newly connected user
     socket.emit('update_users', {
@@ -56,10 +93,17 @@ io.on('connection', (socket) => {
   socket.on('send_message', (messageData) => {
     const user = users.get(socket.id);
     if (user) {
+      // Validate and sanitize message
+      const validatedText = validateMessage(messageData.text);
+      if (!validatedText) {
+        socket.emit('error', { message: 'Invalid message' });
+        return;
+      }
+
       const message = {
         id: Date.now(),
         nickname: user.nickname,
-        text: messageData.text,
+        text: validatedText,
         timestamp: new Date().toLocaleTimeString('en-US', {
           hour: '2-digit',
           minute: '2-digit',
@@ -68,11 +112,80 @@ io.on('connection', (socket) => {
         })
       };
 
+      // Clear typing indicator when message is sent
+      if (user.isTyping) {
+        user.isTyping = false;
+        io.emit('user_stop_typing', { nickname: user.nickname });
+      }
+
       // Broadcast message to all clients
       io.emit('receive_message', message);
 
       // Log to server console
       console.log(`[${message.timestamp}] ${message.nickname}: ${message.text}`);
+    }
+  });
+
+  // Handle incoming GIF messages
+  socket.on('send_gif', (gifData) => {
+    const user = users.get(socket.id);
+    if (user) {
+      // Validate GIF URL (basic check)
+      if (!gifData.url || typeof gifData.url !== 'string' || !gifData.url.startsWith('http')) {
+        socket.emit('error', { message: 'Invalid GIF' });
+        return;
+      }
+
+      // Limit URL length to prevent abuse
+      if (gifData.url.length > 500) {
+        socket.emit('error', { message: 'GIF URL too long' });
+        return;
+      }
+
+      const gifTitle = (gifData.title || 'GIF').substring(0, 100);
+
+      const message = {
+        id: Date.now(),
+        nickname: user.nickname,
+        text: gifTitle,
+        gifUrl: gifData.url,
+        timestamp: new Date().toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: true
+        })
+      };
+
+      // Clear typing indicator when GIF is sent
+      if (user.isTyping) {
+        user.isTyping = false;
+        io.emit('user_stop_typing', { nickname: user.nickname });
+      }
+
+      // Broadcast GIF to all clients
+      io.emit('receive_gif', message);
+
+      // Log to server console
+      console.log(`[${message.timestamp}] ${message.nickname} sent a GIF: ${gifTitle}`);
+    }
+  });
+
+  // Handle typing indicator
+  socket.on('user_typing', () => {
+    const user = users.get(socket.id);
+    if (user) {
+      user.isTyping = true;
+      socket.broadcast.emit('user_typing', { nickname: user.nickname });
+    }
+  });
+
+  // Handle stop typing
+  socket.on('user_stop_typing', () => {
+    const user = users.get(socket.id);
+    if (user) {
+      user.isTyping = false;
+      socket.broadcast.emit('user_stop_typing', { nickname: user.nickname });
     }
   });
 
