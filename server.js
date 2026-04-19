@@ -339,11 +339,65 @@ app.get('/api/users/:userId/stats', (req, res) => {
       success: true, 
       messageCount: messageCount,
       joinedAt: user.created_at,
-      bio: user.bio
+      bio: user.bio,
+      avatar: user.avatar_url
     });
   } catch (error) {
     console.error('Error fetching user stats:', error);
     res.status(500).json({ error: 'Failed to fetch user stats' });
+  }
+});
+
+/**
+ * Update user profile (avatar and bio)
+ */
+app.put('/api/users/:userId/profile', (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { avatar, bio } = req.body;
+    const token = req.headers.authorization?.split(' ')[1];
+
+    if (!token) {
+      return res.status(401).json({ error: 'No token provided' });
+    }
+
+    const decoded = verifyToken(token);
+    if (!decoded) {
+      return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+
+    // Only allow users to update their own profile
+    if (decoded.userId !== userId) {
+      return res.status(403).json({ error: 'Cannot update another user\'s profile' });
+    }
+
+    // Validate inputs
+    if (bio && bio.length > 200) {
+      return res.status(400).json({ error: 'Bio must be 200 characters or less' });
+    }
+
+    // Update user profile
+    const stmt = db.prepare(`
+      UPDATE users 
+      SET avatar_url = ?, bio = ?, updated_at = CURRENT_TIMESTAMP 
+      WHERE id = ?
+    `);
+    stmt.run(avatar || null, bio || null, userId);
+
+    const user = User.findById(userId);
+    res.json({
+      success: true,
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        avatar_url: user.avatar_url,
+        bio: user.bio
+      }
+    });
+  } catch (error) {
+    console.error('Error updating user profile:', error);
+    res.status(500).json({ error: 'Failed to update profile' });
   }
 });
 

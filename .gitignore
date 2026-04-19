@@ -22,3 +22,9 @@ Thumbs.db
 # Build outputs
 dist/
 build/
+
+# Prep message (custom system prompts - not committed)
+prep-message.js
+
+# Prep message (custom system prompts)
+prep-message.js

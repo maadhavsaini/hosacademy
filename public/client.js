@@ -35,6 +35,9 @@ let gifSearchTimeout = null;
 let searchTerm = '';
 let allMessages = [];
 let userProfiles = {};
+let editingProfileUserId = null;
+let currentProfileAvatar = '';
+let searchCollapsed = false;
 
 // ========================================
 // DOM ELEMENTS
@@ -78,6 +81,16 @@ const searchInput = document.getElementById('searchInput');
 const clearSearchBtn = document.getElementById('clearSearchBtn');
 const profileModal = document.getElementById('profileModal');
 const profileModalClose = document.getElementById('profileModalClose');
+const searchToggleBtn = document.getElementById('searchToggleBtn');
+const chatSearchBar = document.getElementById('chatSearchBar');
+const editProfileBtn = document.getElementById('editProfileBtn');
+const saveProfileBtn = document.getElementById('saveProfileBtn');
+const cancelEditBtn = document.getElementById('cancelEditBtn');
+const profileViewMode = document.getElementById('profileViewMode');
+const profileEditMode = document.getElementById('profileEditMode');
+const profileAvatarInput = document.getElementById('profileAvatarInput');
+const profileBioEdit = document.getElementById('profileBioEdit');
+const bioCharCount = document.getElementById('bioCharCount');
 
 // ========================================
 // UTILITY FUNCTIONS
@@ -783,6 +796,9 @@ function addSystemNotification(text) {
  * @param {String} username - Username
  */
 function showUserProfile(userId, username) {
+  editingProfileUserId = userId;
+  const isOwnProfile = userId === currentUserId;
+
   // Fetch user stats from server
   fetch(`${API_BASE}/api/users/${userId}/stats`, {
     headers: {
@@ -792,14 +808,109 @@ function showUserProfile(userId, username) {
     .then(res => res.json())
     .then(data => {
       if (data.success) {
+        // Update view mode
         document.getElementById('profileUsername').textContent = username;
         document.getElementById('profileMessageCount').textContent = data.messageCount || 0;
         document.getElementById('profileJoinDate').textContent = new Date(data.joinedAt).toLocaleDateString() || '-';
         document.getElementById('profileBio').textContent = data.bio || 'No bio';
+        
+        // Set avatar
+        const avatar = data.avatar || '👤';
+        document.getElementById('profileAvatar').textContent = avatar;
+        currentProfileAvatar = avatar;
+
+        // Show edit button only for own profile
+        editProfileBtn.style.display = isOwnProfile ? 'block' : 'none';
+
+        // Show view mode, hide edit mode
+        profileViewMode.style.display = 'block';
+        profileEditMode.style.display = 'none';
+        editProfileBtn.onclick = () => enterEditMode(data);
+
         profileModal.classList.remove('hidden');
       }
     })
     .catch(err => console.error('Error fetching user stats:', err));
+}
+
+/**
+ * Enter profile edit mode
+ * @param {Object} userData - User data from server
+ */
+function enterEditMode(userData) {
+  profileViewMode.style.display = 'none';
+  profileEditMode.style.display = 'block';
+
+  // Set edit values
+  profileAvatarInput.value = userData.avatar || '';
+  document.getElementById('profileAvatarEdit').textContent = userData.avatar || '👤';
+  profileBioEdit.value = userData.bio || '';
+  updateBioCharCount();
+}
+
+/**
+ * Exit edit mode and show view mode
+ */
+function exitEditMode() {
+  profileViewMode.style.display = 'block';
+  profileEditMode.style.display = 'none';
+}
+
+/**
+ * Set profile avatar
+ * @param {String} emoji - Emoji to set
+ */
+function setProfileAvatar(emoji) {
+  profileAvatarInput.value = emoji;
+  document.getElementById('profileAvatarEdit').textContent = emoji;
+}
+
+/**
+ * Update bio character count
+ */
+function updateBioCharCount() {
+  const count = profileBioEdit.value.length;
+  bioCharCount.textContent = `${count}/200`;
+}
+
+/**
+ * Save profile changes
+ */
+function saveProfileChanges() {
+  const avatar = profileAvatarInput.value.trim() || '👤';
+  const bio = profileBioEdit.value.trim();
+
+  if (bio.length > 200) {
+    alert('Bio must be 200 characters or less');
+    return;
+  }
+
+  fetch(`${API_BASE}/api/users/${editingProfileUserId}/profile`, {
+    method: 'PUT',
+    headers: {
+      'Authorization': `Bearer ${jwtToken}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      avatar: avatar,
+      bio: bio
+    })
+  })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        alert('Profile updated successfully!');
+        exitEditMode();
+        // Refresh profile display
+        showUserProfile(editingProfileUserId, document.getElementById('profileUsername').textContent);
+      } else {
+        alert('Error saving profile: ' + (data.error || 'Unknown error'));
+      }
+    })
+    .catch(err => {
+      console.error('Error saving profile:', err);
+      alert('Error saving profile');
+    });
 }
 
 /**
@@ -900,7 +1011,44 @@ function updateUsersList(activeUsers) {
   activeUsers.forEach((nickname) => {
     const userItem = document.createElement('div');
     userItem.className = 'user-item';
-    userItem.textContent = nickname;
+    userItem.style.cursor = 'pointer';
+    userItem.style.transition = 'all 0.2s';
+
+    // Create avatar
+    const colors = ['🎨', '🎭', '🎪', '🎯', '🎲'];
+    const colorHash = nickname.charCodeAt(0) % 5;
+    const avatar = document.createElement('span');
+    avatar.textContent = colors[colorHash];
+    avatar.style.marginRight = '8px';
+
+    // Create name span
+    const nameSpan = document.createElement('span');
+    nameSpan.textContent = nickname;
+
+    // Highlight if it's current user
+    if (nickname === currentNickname) {
+      userItem.style.color = '#00d4ff';
+      userItem.style.fontWeight = 'bold';
+      nameSpan.textContent = nickname + ' (you)';
+    }
+
+    userItem.appendChild(avatar);
+    userItem.appendChild(nameSpan);
+
+    // Click to show profile
+    userItem.addEventListener('click', () => {
+      showUserProfile(currentUserId, nickname);
+    });
+
+    userItem.addEventListener('mouseenter', () => {
+      userItem.style.background = 'rgba(0, 212, 255, 0.1)';
+      userItem.style.borderRadius = '4px';
+    });
+
+    userItem.addEventListener('mouseleave', () => {
+      userItem.style.background = 'transparent';
+    });
+
     usersList.appendChild(userItem);
   });
 
@@ -957,6 +1105,48 @@ profileModalClose.addEventListener('click', () => {
 profileModal.addEventListener('click', (e) => {
   if (e.target === profileModal) {
     profileModal.classList.add('hidden');
+  }
+});
+
+// ========================================
+// PROFILE EDITING EVENT LISTENERS
+// ========================================
+
+/**
+ * Save profile changes
+ */
+saveProfileBtn.addEventListener('click', saveProfileChanges);
+
+/**
+ * Cancel edit mode
+ */
+cancelEditBtn.addEventListener('click', exitEditMode);
+
+/**
+ * Update bio character count
+ */
+profileBioEdit.addEventListener('input', updateBioCharCount);
+
+// ========================================
+// SEARCH TOGGLE EVENT LISTENERS
+// ========================================
+
+/**
+ * Toggle search bar visibility
+ */
+searchToggleBtn.addEventListener('click', () => {
+  searchCollapsed = !searchCollapsed;
+  if (searchCollapsed) {
+    searchInput.style.display = 'none';
+    clearSearchBtn.style.display = 'none';
+    searchToggleBtn.classList.add('collapsed');
+    // Clear search when collapsing
+    searchInput.value = '';
+    filterMessagesBySearch();
+  } else {
+    searchInput.style.display = '';
+    searchToggleBtn.classList.remove('collapsed');
+    searchInput.focus();
   }
 });
 

@@ -171,7 +171,14 @@
         <!-- Chat Window -->
         <main class="chat-window">
           <!-- Search Bar -->
-          <div class="chat-search">
+          <div class="chat-search" id="chatSearchBar">
+            <button
+              class="search-toggle-btn"
+              id="searchToggleBtn"
+              title="Toggle search"
+            >
+              ▼
+            </button>
             <input
               type="text"
               id="searchInput"
@@ -242,24 +249,89 @@
 
     <!-- User Profile Modal -->
     <div id="profileModal" class="modal hidden">
-      <div class="modal-content">
+      <div class="modal-content profile-modal-content">
         <button class="modal-close" id="profileModalClose">&times;</button>
-        <div class="profile-header">
-          <div class="profile-avatar large" id="profileAvatar">👤</div>
-          <h2 id="profileUsername">Username</h2>
+
+        <!-- View Mode -->
+        <div id="profileViewMode">
+          <div class="profile-header">
+            <div class="profile-avatar large" id="profileAvatar">👤</div>
+            <h2 id="profileUsername">Username</h2>
+          </div>
+          <div class="profile-stats">
+            <div class="stat">
+              <span class="stat-label">Messages:</span>
+              <span class="stat-value" id="profileMessageCount">0</span>
+            </div>
+            <div class="stat">
+              <span class="stat-label">Joined:</span>
+              <span class="stat-value" id="profileJoinDate">-</span>
+            </div>
+            <div class="stat">
+              <span class="stat-label">Bio:</span>
+              <span class="stat-value" id="profileBio">No bio</span>
+            </div>
+          </div>
+          <button
+            id="editProfileBtn"
+            class="edit-profile-btn"
+            style="display: none"
+          >
+            Edit Profile
+          </button>
         </div>
-        <div class="profile-stats">
-          <div class="stat">
-            <span class="stat-label">Messages:</span>
-            <span class="stat-value" id="profileMessageCount">0</span>
+
+        <!-- Edit Mode -->
+        <div id="profileEditMode" style="display: none">
+          <div class="profile-header">
+            <div class="profile-avatar large" id="profileAvatarEdit">👤</div>
+            <div class="avatar-selector">
+              <label>Avatar:</label>
+              <input
+                type="text"
+                id="profileAvatarInput"
+                class="avatar-input"
+                placeholder="Enter emoji or URL"
+              />
+              <div class="emoji-quick-select">
+                <span class="emoji-option" onclick="setProfileAvatar('😊')"
+                  >😊</span
+                >
+                <span class="emoji-option" onclick="setProfileAvatar('😎')"
+                  >😎</span
+                >
+                <span class="emoji-option" onclick="setProfileAvatar('🎨')"
+                  >🎨</span
+                >
+                <span class="emoji-option" onclick="setProfileAvatar('🎭')"
+                  >🎭</span
+                >
+                <span class="emoji-option" onclick="setProfileAvatar('🚀')"
+                  >🚀</span
+                >
+                <span class="emoji-option" onclick="setProfileAvatar('⭐')"
+                  >⭐</span
+                >
+              </div>
+            </div>
           </div>
-          <div class="stat">
-            <span class="stat-label">Joined:</span>
-            <span class="stat-value" id="profileJoinDate">-</span>
+          <div class="profile-stats">
+            <div class="stat">
+              <label for="profileBioEdit">Bio:</label>
+              <textarea
+                id="profileBioEdit"
+                class="bio-edit"
+                maxlength="200"
+                placeholder="Tell us about yourself..."
+              ></textarea>
+              <small id="bioCharCount">0/200</small>
+            </div>
           </div>
-          <div class="stat">
-            <span class="stat-label">Bio:</span>
-            <span class="stat-value" id="profileBio">No bio</span>
+          <div class="profile-actions">
+            <button id="saveProfileBtn" class="btn-primary">
+              Save Changes
+            </button>
+            <button id="cancelEditBtn" class="btn-secondary">Cancel</button>
           </div>
         </div>
       </div>
