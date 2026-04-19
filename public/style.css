@@ -1,59 +1,37 @@
 /* ========================================
-   IMPORTS & VARIABLES
+   IMPORTS & DISCORD THEME VARIABLES
    ======================================== */
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 :root {
-  /* Primary Colors */
-  --primary: #7c3aed;
-  --primary-light: #a78bfa;
-  --primary-dark: #6d28d9;
-  --primary-glow: rgba(124, 58, 237, 0.3);
-
-  /* Neutrals - Premium Dark Mode */
-  --bg-primary: #0f1118;
-  --bg-secondary: #1a1d2e;
-  --bg-tertiary: #262d45;
-  --bg-hover: #2a3250;
-
-  /* Text Colors */
-  --text-primary: #e8eaf6;
-  --text-secondary: #b0b4c3;
-  --text-tertiary: #8b8f9f;
-
-  /* Accent Colors */
-  --accent-blue: #3b82f6;
-  --accent-blue-light: #60a5fa;
-  --accent-purple: #a855f7;
-  --accent-pink: #ec4899;
-  --accent-emerald: #10b981;
-
-  /* Status Colors */
-  --success: #10b981;
-  --warning: #f59e0b;
-  --error: #ef4444;
-  --info: #3b82f6;
-
+  /* Discord Color Palette */
+  --discord-bg-primary: #36393f;
+  --discord-bg-secondary: #2f3136;
+  --discord-bg-tertiary: #202225;
+  --discord-bg-hover: #2c2f33;
+  
+  --discord-text-primary: #dcddde;
+  --discord-text-secondary: #b9bbbe;
+  --discord-text-tertiary: #72767d;
+  
+  --discord-blue: #5865f2;
+  --discord-blue-hover: #4752c4;
+  --discord-blue-light: #7289da;
+  
+  --discord-green: #43b581;
+  --discord-yellow: #faa61a;
+  --discord-red: #f04747;
+  
   /* Spacing */
-  --radius-xs: 4px;
-  --radius-sm: 6px;
+  --radius-xs: 3px;
+  --radius-sm: 4px;
   --radius-md: 8px;
   --radius-lg: 12px;
-  --radius-xl: 16px;
-  --radius-2xl: 20px;
-  --radius-full: 9999px;
-
-  /* Shadows */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
-  --shadow-xl: 0 16px 40px rgba(0, 0, 0, 0.6);
-
+  
   /* Transitions */
   --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* ========================================
@@ -71,18 +49,15 @@ body {
   width: 100%;
   height: 100%;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background: var(--bg-primary);
-  color: var(--text-primary);
+  background: var(--discord-bg-tertiary);
+  color: var(--discord-text-primary);
   overflow: hidden;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* ========================================
-   SCROLLBAR STYLING
-   ======================================== */
-
+/* Scrollbar Styling */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -93,17 +68,16 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(124, 58, 237, 0.4);
+  background: var(--discord-bg-hover);
   border-radius: 4px;
-  transition: background var(--transition-fast);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(124, 58, 237, 0.7);
+  background: #1e1f22;
 }
 
 /* ========================================
-   AUTH SCREEN STYLING
+   AUTH SCREEN
    ======================================== */
 
 .auth-screen {
@@ -112,7 +86,7 @@ body {
   justify-content: center;
   width: 100%;
   height: 100%;
-  background: var(--bg-primary);
+  background: var(--discord-bg-tertiary);
   position: fixed;
   top: 0;
   left: 0;
@@ -124,15 +98,14 @@ body {
 }
 
 .auth-container {
-  background: var(--bg-secondary);
-  border: 1px solid rgba(124, 58, 237, 0.2);
-  border-radius: var(--radius-2xl);
-  padding: 48px;
-  max-width: 450px;
+  background: var(--discord-bg-secondary);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-lg);
+  padding: 40px;
+  max-width: 420px;
   width: 90%;
-  box-shadow: var(--shadow-xl), inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(12px);
-  animation: slideIn 0.4s ease-out;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+  animation: slideIn 0.3s ease-out;
 }
 
 .auth-header {
@@ -141,36 +114,32 @@ body {
 }
 
 .auth-header h1 {
-  font-size: 36px;
+  font-size: 32px;
   font-weight: 800;
-  margin-bottom: 12px;
-  background: linear-gradient(135deg, var(--primary-light) 0%, var(--accent-blue-light) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  margin-bottom: 8px;
+  color: var(--discord-blue);
   letter-spacing: -1px;
 }
 
 .auth-header p {
   font-size: 14px;
-  color: var(--text-secondary);
-  font-weight: 500;
+  color: var(--discord-text-secondary);
 }
 
 .auth-tabs {
   display: flex;
   gap: 0;
-  margin-bottom: 32px;
-  border-bottom: 2px solid var(--bg-tertiary);
+  margin-bottom: 24px;
+  border-bottom: 2px solid var(--discord-bg-primary);
 }
 
 .auth-tab-btn {
   flex: 1;
-  padding: 14px 20px;
+  padding: 12px 16px;
   border: none;
   background: none;
-  color: var(--text-tertiary);
-  font-size: 14px;
+  color: var(--discord-text-tertiary);
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   transition: all var(--transition-base);
@@ -178,16 +147,15 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: -2px;
-  position: relative;
 }
 
 .auth-tab-btn.active {
-  color: var(--primary-light);
-  border-bottom-color: var(--primary-light);
+  color: var(--discord-blue);
+  border-bottom-color: var(--discord-blue);
 }
 
 .auth-tab-btn:hover {
-  color: var(--text-primary);
+  color: var(--discord-text-primary);
 }
 
 .auth-form {
@@ -203,23 +171,23 @@ body {
 .form-group {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .form-group label {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
-  color: var(--primary-light);
+  color: var(--discord-text-primary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .form-group input {
-  padding: 12px 14px;
-  border: 1px solid rgba(124, 58, 237, 0.2);
-  border-radius: var(--radius-lg);
-  background: var(--bg-tertiary);
-  color: var(--text-primary);
+  padding: 10px 12px;
+  border: 1px solid var(--discord-bg-primary);
+  border-radius: var(--radius-md);
+  background: var(--discord-bg-tertiary);
+  color: var(--discord-text-primary);
   font-size: 14px;
   transition: all var(--transition-base);
   font-family: inherit;
@@ -227,59 +195,40 @@ body {
 
 .form-group input:focus {
   outline: none;
-  border-color: var(--primary-light);
-  background: rgba(124, 58, 237, 0.08);
-  box-shadow: 0 0 0 3px var(--primary-glow);
+  border-color: var(--discord-blue);
+  background: #2f3136;
 }
 
 .form-group input::placeholder {
-  color: var(--text-tertiary);
+  color: var(--discord-text-tertiary);
 }
 
 .auth-btn {
-  padding: 12px 20px;
+  padding: 10px 16px;
   border: none;
-  border-radius: var(--radius-lg);
-  background: linear-gradient(135deg, var(--primary) 0%, var(--accent-purple) 100%);
+  border-radius: var(--radius-md);
+  background: var(--discord-blue);
   color: #fff;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   transition: all var(--transition-base);
-  box-shadow: 0 4px 16px var(--primary-glow);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-top: 8px;
-  position: relative;
-  overflow: hidden;
-}
-
-.auth-btn::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, transparent 100%);
-  opacity: 0;
-  transition: opacity var(--transition-base);
 }
 
 .auth-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px var(--primary-glow);
-}
-
-.auth-btn:hover::before {
-  opacity: 1;
+  background: var(--discord-blue-hover);
 }
 
 .auth-btn:active {
-  transform: translateY(0);
+  transform: scale(0.98);
 }
 
 .auth-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  transform: none;
 }
 
 .auth-message {
@@ -290,31 +239,28 @@ body {
 }
 
 .auth-message.error {
-  color: var(--error);
+  color: var(--discord-red);
 }
 
 .auth-message.success {
-  color: var(--success);
+  color: var(--discord-green);
 }
 
 .auth-hint {
   text-align: center;
   font-size: 12px;
-  color: var(--text-tertiary);
-  margin-top: 24px;
+  color: var(--discord-text-tertiary);
+  margin-top: 20px;
 }
 
-/* ========================================
-   LOGIN SCREEN (LEGACY)
-   ======================================== */
-
+/* Login Screen Legacy */
 .login-screen {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 100%;
   height: 100%;
-  background: var(--bg-primary);
+  background: var(--discord-bg-tertiary);
   position: fixed;
   top: 0;
   left: 0;
@@ -326,15 +272,14 @@ body {
 }
 
 .login-container {
-  background: var(--bg-secondary);
-  border: 1px solid rgba(124, 58, 237, 0.2);
-  border-radius: var(--radius-2xl);
-  padding: 48px;
-  max-width: 400px;
+  background: var(--discord-bg-secondary);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-lg);
+  padding: 40px;
+  max-width: 380px;
   width: 90%;
-  box-shadow: var(--shadow-xl);
-  backdrop-filter: blur(12px);
-  animation: slideIn 0.4s ease-out;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+  animation: slideIn 0.3s ease-out;
 }
 
 .login-header {
@@ -343,34 +288,30 @@ body {
 }
 
 .login-header h1 {
-  font-size: 36px;
+  font-size: 32px;
   font-weight: 800;
-  margin-bottom: 12px;
-  background: linear-gradient(135deg, var(--primary-light) 0%, var(--accent-blue-light) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  margin-bottom: 8px;
+  color: var(--discord-blue);
 }
 
 .login-header p {
   font-size: 14px;
-  color: var(--text-secondary);
-  font-weight: 500;
+  color: var(--discord-text-secondary);
 }
 
 .login-form {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .nickname-input {
-  padding: 12px 14px;
-  border: 1px solid rgba(124, 58, 237, 0.2);
-  border-radius: var(--radius-lg);
-  background: var(--bg-tertiary);
-  color: var(--text-primary);
+  padding: 10px 12px;
+  border: 1px solid var(--discord-bg-primary);
+  border-radius: var(--radius-md);
+  background: var(--discord-bg-tertiary);
+  color: var(--discord-text-primary);
   font-size: 14px;
   transition: all var(--transition-base);
   font-family: inherit;
@@ -378,47 +319,43 @@ body {
 
 .nickname-input:focus {
   outline: none;
-  border-color: var(--primary-light);
-  background: rgba(124, 58, 237, 0.08);
-  box-shadow: 0 0 0 3px var(--primary-glow);
+  border-color: var(--discord-blue);
 }
 
 .nickname-input::placeholder {
-  color: var(--text-tertiary);
+  color: var(--discord-text-tertiary);
 }
 
 .login-btn {
-  padding: 12px 20px;
+  padding: 10px 16px;
   border: none;
-  border-radius: var(--radius-lg);
-  background: linear-gradient(135deg, var(--primary) 0%, var(--accent-purple) 100%);
+  border-radius: var(--radius-md);
+  background: var(--discord-blue);
   color: #fff;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   transition: all var(--transition-base);
-  box-shadow: 0 4px 16px var(--primary-glow);
 }
 
 .login-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px var(--primary-glow);
+  background: var(--discord-blue-hover);
 }
 
 .login-btn:active {
-  transform: translateY(0);
+  transform: scale(0.98);
 }
 
 .login-hint {
   text-align: center;
   font-size: 12px;
-  color: var(--text-tertiary);
+  color: var(--discord-text-tertiary);
 }
 
 @keyframes slideIn {
   from {
     opacity: 0;
-    transform: translateY(-20px);
+    transform: translateY(-10px);
   }
   to {
     opacity: 1;
@@ -427,7 +364,7 @@ body {
 }
 
 /* ========================================
-   CHAT APPLICATION MAIN LAYOUT
+   CHAT APPLICATION - DISCORD LAYOUT
    ======================================== */
 
 .chat-app {
@@ -443,19 +380,21 @@ body {
 
 /* Header */
 .chat-header {
-  background: var(--bg-secondary);
-  border-bottom: 1px solid rgba(124, 58, 237, 0.1);
-  padding: 16px 24px;
-  backdrop-filter: blur(10px);
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+  background: var(--discord-bg-secondary);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.3);
+  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 48px;
 }
 
 .header-content {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 20px;
+  width: 100%;
+  gap: 16px;
 }
 
 .hamburger {
@@ -464,20 +403,20 @@ body {
   background: none;
   border: none;
   cursor: pointer;
-  padding: 8px;
-  gap: 5px;
+  padding: 6px;
+  gap: 4px;
 }
 
 .hamburger span {
-  width: 25px;
-  height: 2.5px;
-  background: var(--primary-light);
+  width: 22px;
+  height: 2px;
+  background: var(--discord-text-secondary);
   border-radius: 2px;
   transition: all var(--transition-base);
 }
 
 .hamburger.active span:nth-child(1) {
-  transform: rotate(45deg) translate(8px, 8px);
+  transform: rotate(45deg) translate(6px, 6px);
 }
 
 .hamburger.active span:nth-child(2) {
@@ -485,82 +424,75 @@ body {
 }
 
 .hamburger.active span:nth-child(3) {
-  transform: rotate(-45deg) translate(7px, -7px);
+  transform: rotate(-45deg) translate(6px, -6px);
 }
 
 .app-title {
-  font-size: 24px;
+  font-size: 18px;
   font-weight: 700;
-  background: linear-gradient(135deg, var(--primary-light) 0%, var(--accent-blue-light) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  letter-spacing: -0.5px;
+  color: var(--discord-blue);
+  letter-spacing: -0.3px;
 }
 
 .user-info {
   display: flex;
-  gap: 20px;
-  font-size: 13px;
+  gap: 16px;
+  font-size: 12px;
 }
 
 .current-user,
 .user-count {
-  color: var(--text-secondary);
-  font-weight: 500;
+  color: var(--discord-text-secondary);
 }
 
 .current-user strong,
 .user-count strong {
-  color: var(--primary-light);
+  color: var(--discord-blue);
   font-weight: 600;
 }
 
-/* Chat Container */
+/* Main Chat Container - Discord 3-Column */
 .chat-container {
   display: flex;
   flex: 1;
   overflow: hidden;
   gap: 0;
-  min-height: 0;
 }
 
-/* Sidebar */
+/* Sidebar - Discord Style */
 .sidebar {
-  width: 220px;
-  background: var(--bg-secondary);
-  border-right: 1px solid rgba(124, 58, 237, 0.1);
+  width: 240px;
+  background: var(--discord-bg-secondary);
+  border-right: 1px solid rgba(0, 0, 0, 0.3);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  transition: transform var(--transition-base);
 }
 
 .sidebar-header {
-  padding: 16px;
-  border-bottom: 1px solid rgba(124, 58, 237, 0.1);
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.2);
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
 .sidebar-header h2 {
-  font-size: 12px;
+  font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: 1px;
-  color: var(--primary-light);
+  letter-spacing: 0.5px;
+  color: var(--discord-text-secondary);
   margin: 0;
   font-weight: 700;
 }
 
 .online-indicator {
-  background: linear-gradient(135deg, var(--accent-emerald) 0%, var(--success) 100%);
+  background: var(--discord-green);
   color: #fff;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
-  padding: 2px 10px;
-  border-radius: var(--radius-full);
-  letter-spacing: 0.5px;
+  padding: 2px 8px;
+  border-radius: 12px;
 }
 
 .users-list {
@@ -570,15 +502,14 @@ body {
 }
 
 .user-item {
-  padding: 12px 16px;
-  color: var(--text-primary);
+  padding: 8px 16px;
+  color: var(--discord-text-secondary);
   font-size: 13px;
-  border-left: 3px solid transparent;
   transition: all var(--transition-base);
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   font-weight: 500;
 }
 
@@ -586,31 +517,21 @@ body {
   content: '';
   width: 8px;
   height: 8px;
-  background: var(--accent-emerald);
+  background: var(--discord-green);
   border-radius: 50%;
   flex-shrink: 0;
-  animation: pulse 2s ease-in-out infinite;
 }
 
 .user-item:hover {
-  background: rgba(124, 58, 237, 0.08);
-  border-left-color: var(--primary);
+  background: rgba(79, 84, 92, 0.3);
+  color: var(--discord-text-primary);
 }
 
 .empty-users {
   text-align: center;
-  color: var(--text-tertiary);
+  color: var(--discord-text-tertiary);
   padding: 20px 16px;
   font-size: 12px;
-}
-
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.4;
-  }
 }
 
 /* Chat Window */
@@ -618,89 +539,82 @@ body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+  background: var(--discord-bg-primary);
   overflow: hidden;
+  border-left: 1px solid rgba(0, 0, 0, 0.3);
+  border-right: 1px solid rgba(0, 0, 0, 0.3);
 }
 
 /* Search Bar */
 .chat-search {
   display: flex;
   align-items: center;
-  padding: 12px 16px;
-  border-bottom: 1px solid rgba(124, 58, 237, 0.1);
-  background: rgba(124, 58, 237, 0.05);
-  gap: 8px;
-  backdrop-filter: blur(10px);
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+  background: var(--discord-bg-primary);
+  gap: 6px;
 }
 
 .search-toggle-btn {
   background: none;
   border: none;
-  color: var(--primary-light);
+  color: var(--discord-text-secondary);
   cursor: pointer;
-  font-size: 16px;
-  padding: 4px 8px;
+  font-size: 14px;
+  padding: 4px 6px;
   transition: all var(--transition-base);
   flex-shrink: 0;
 }
 
 .search-toggle-btn:hover {
-  color: var(--accent-blue-light);
-  transform: scale(1.1);
-}
-
-.search-toggle-btn.collapsed {
-  transform: rotate(180deg);
+  color: var(--discord-text-primary);
 }
 
 .search-input {
   flex: 1;
-  background: rgba(124, 58, 237, 0.08);
-  border: 1px solid rgba(124, 58, 237, 0.2);
-  color: var(--text-primary);
-  padding: 8px 12px;
-  border-radius: var(--radius-md);
-  font-size: 13px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(0, 0, 0, 0.5);
+  color: var(--discord-text-primary);
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
   font-family: inherit;
   transition: all var(--transition-base);
 }
 
 .search-input::placeholder {
-  color: var(--text-tertiary);
+  color: var(--discord-text-tertiary);
 }
 
 .search-input:focus {
   outline: none;
-  border-color: var(--primary-light);
-  background: rgba(124, 58, 237, 0.12);
-  box-shadow: 0 0 0 3px var(--primary-glow);
+  border-color: rgba(88, 101, 242, 0.5);
+  background: rgba(0, 0, 0, 0.5);
 }
 
 .clear-search-btn {
   background: none;
   border: none;
-  color: var(--primary-light);
+  color: var(--discord-text-secondary);
   cursor: pointer;
-  font-size: 18px;
-  padding: 4px 8px;
+  font-size: 16px;
+  padding: 4px 6px;
   transition: all var(--transition-base);
   flex-shrink: 0;
 }
 
 .clear-search-btn:hover {
-  color: var(--error);
-  transform: scale(1.2);
+  color: var(--discord-text-primary);
 }
 
 /* Messages Container */
 .messages-container {
   flex: 1;
   overflow-y: auto;
-  padding: 20px;
+  padding: 16px 20px;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  scroll-behavior: smooth;
 }
 
 .welcome-message {
@@ -708,17 +622,16 @@ body {
   align-items: center;
   justify-content: center;
   height: 100%;
-  color: var(--text-tertiary);
-  font-size: 16px;
+  color: var(--discord-text-tertiary);
+  font-size: 15px;
   text-align: center;
-  font-weight: 500;
 }
 
-/* Message Styling */
+/* Discord Messages */
 @keyframes messageAppear {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
@@ -728,208 +641,69 @@ body {
 
 .message {
   animation: messageAppear var(--transition-base);
+  display: flex;
+  gap: 12px;
+  margin-bottom: 8px;
 }
 
 .message.system {
-  display: flex;
   justify-content: center;
-  margin: 12px 0;
+  margin: 16px 0;
 }
 
 .message.system .message-content {
-  background: rgba(124, 58, 237, 0.1);
-  border: 1px solid rgba(124, 58, 237, 0.3);
-  color: var(--primary-light);
-  padding: 8px 16px;
-  border-radius: var(--radius-full);
+  background: transparent;
+  border: 1px solid rgba(88, 101, 242, 0.3);
+  color: var(--discord-blue);
+  padding: 8px 12px;
+  border-radius: 4px;
   font-size: 12px;
   text-align: center;
-  max-width: 300px;
-  font-weight: 500;
 }
 
 .message.user-message {
   display: flex;
-  flex-direction: column;
+  gap: 12px;
   align-items: flex-start;
-  margin-bottom: 4px;
 }
 
 .message.user-message.grouped-message {
-  margin-bottom: 1px;
-}
-
-.message.user-message.own {
-  align-items: flex-end;
+  margin-top: 2px;
+  margin-bottom: 2px;
 }
 
 .message-header {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 8px;
-  margin-bottom: 6px;
+  margin-bottom: 2px;
   font-size: 12px;
-}
-
-.message.user-message .message-header {
-  color: var(--text-tertiary);
-}
-
-.message.user-message.own .message-header {
-  color: var(--text-tertiary);
 }
 
 .nickname {
   font-weight: 600;
-  color: var(--text-secondary);
-}
-
-.message.user-message.own .nickname {
-  color: var(--primary-light);
+  color: var(--discord-text-primary);
 }
 
 .timestamp {
   font-size: 11px;
-  color: var(--text-tertiary);
+  color: var(--discord-text-tertiary);
 }
 
-/* Modern Message Bubbles */
 .message-content {
-  padding: 12px 16px;
-  border-radius: var(--radius-xl);
-  max-width: 500px;
+  color: var(--discord-text-primary);
   word-wrap: break-word;
-  line-height: 1.5;
-  color: var(--text-primary);
+  line-height: 1.4;
   font-size: 14px;
-  transition: all var(--transition-base);
-}
-
-.message.user-message.other .message-content {
-  background: var(--bg-tertiary);
-  border: 1px solid rgba(124, 58, 237, 0.15);
-  border-radius: 12px 12px 12px 4px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-}
-
-.message.user-message.other .message-content:hover {
-  background: var(--bg-hover);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  max-width: 550px;
 }
 
 .message.user-message.own .message-content {
-  background: linear-gradient(135deg, var(--primary) 0%, var(--accent-purple) 100%);
-  border: none;
-  color: #fff;
-  border-radius: 12px 4px 12px 12px;
-  box-shadow: 0 4px 16px var(--primary-glow);
-}
-
-.message.user-message.own .message-content:hover {
-  box-shadow: 0 6px 20px var(--primary-glow);
-  transform: translateY(-1px);
-}
-
-/* Bot Message */
-.message.user-message.bot {
-  align-items: flex-start;
-}
-
-.message.user-message.bot .message-content {
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(139, 92, 246, 0.1) 100%);
-  border: 1px solid rgba(59, 130, 246, 0.3);
-  border-left: 3px solid var(--accent-blue);
-  border-radius: 12px 12px 4px 12px;
-  color: var(--text-primary);
-}
-
-.message.user-message.bot .nickname {
-  color: var(--accent-blue);
-}
-
-/* Message Reactions */
-.message-reactions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 8px;
-  align-items: center;
-}
-
-.reaction {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
-  background: rgba(124, 58, 237, 0.1);
-  border: 1px solid rgba(124, 58, 237, 0.3);
-  border-radius: var(--radius-full);
-  cursor: pointer;
-  font-size: 13px;
-  transition: all var(--transition-base);
-}
-
-.reaction:hover {
-  background: rgba(124, 58, 237, 0.2);
-  border-color: var(--primary-light);
-}
-
-.reaction.active {
-  background: rgba(124, 58, 237, 0.3);
-  border-color: var(--primary-light);
-}
-
-.reaction-emoji {
-  font-size: 16px;
-}
-
-.reaction-count {
-  font-size: 12px;
-  color: var(--text-tertiary);
-  font-weight: 500;
-}
-
-.add-reaction-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  background: rgba(124, 58, 237, 0.1);
-  border: 1px solid rgba(124, 58, 237, 0.3);
-  border-radius: 50%;
-  cursor: pointer;
-  color: var(--primary-light);
-  font-size: 12px;
-  transition: all var(--transition-base);
-  font-weight: 600;
-}
-
-.add-reaction-btn:hover {
-  background: rgba(124, 58, 237, 0.2);
-  border-color: var(--primary-light);
-  transform: scale(1.1);
-}
-
-/* Typing Indicator */
-.typing-indicator {
-  padding: 8px 16px;
-  min-height: 20px;
-  font-size: 13px;
-  color: var(--primary-light);
-  margin-bottom: 8px;
-  font-weight: 500;
-}
-
-.typing-indicator em {
-  font-style: italic;
-  color: var(--text-tertiary);
+  color: var(--discord-text-primary);
 }
 
 /* GIF Messages */
 .message-content.gif-content {
-  background: transparent;
-  border: none;
   padding: 0;
   max-width: 350px;
 }
@@ -937,106 +711,168 @@ body {
 .message-content.gif-content img {
   max-width: 100%;
   height: auto;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   cursor: pointer;
   transition: transform var(--transition-base);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .message-content.gif-content img:hover {
   transform: scale(1.02);
 }
 
-/* Input Area with Glassmorphism */
+/* Message Reactions */
+.message-reactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+  align-items: center;
+}
+
+.reaction {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: rgba(79, 84, 92, 0.3);
+  border: 1px solid rgba(79, 84, 92, 0.5);
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all var(--transition-base);
+}
+
+.reaction:hover {
+  background: rgba(79, 84, 92, 0.5);
+}
+
+.reaction.active {
+  background: rgba(88, 101, 242, 0.2);
+  border-color: var(--discord-blue);
+}
+
+.reaction-emoji {
+  font-size: 14px;
+}
+
+.reaction-count {
+  font-size: 11px;
+  color: var(--discord-text-secondary);
+}
+
+.add-reaction-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background: rgba(79, 84, 92, 0.3);
+  border: 1px solid rgba(79, 84, 92, 0.5);
+  border-radius: 50%;
+  cursor: pointer;
+  color: var(--discord-text-secondary);
+  font-size: 11px;
+  transition: all var(--transition-base);
+}
+
+.add-reaction-btn:hover {
+  background: rgba(79, 84, 92, 0.5);
+  color: var(--discord-text-primary);
+}
+
+/* Typing Indicator */
+.typing-indicator {
+  padding: 8px 0;
+  font-size: 12px;
+  color: var(--discord-text-secondary);
+}
+
+.typing-indicator em {
+  font-style: italic;
+  color: var(--discord-text-tertiary);
+}
+
+/* Input Area */
 .input-area {
-  background: rgba(26, 29, 46, 0.8);
-  border-top: 1px solid rgba(124, 58, 237, 0.1);
-  padding: 16px 20px;
-  backdrop-filter: blur(12px);
-  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.3);
+  background: var(--discord-bg-primary);
+  border-top: 1px solid rgba(0, 0, 0, 0.3);
+  padding: 14px 20px;
 }
 
 .message-form {
   display: flex;
-  gap: 12px;
+  gap: 10px;
 }
 
 .gif-btn {
-  padding: 10px 14px;
-  border: 1px solid rgba(124, 58, 237, 0.3);
-  border-radius: var(--radius-lg);
-  background: rgba(124, 58, 237, 0.08);
-  color: var(--primary-light);
-  font-size: 16px;
+  padding: 8px 12px;
+  border: 1px solid rgba(88, 101, 242, 0.3);
+  border-radius: var(--radius-md);
+  background: rgba(88, 101, 242, 0.08);
+  color: var(--discord-blue);
+  font-size: 14px;
   cursor: pointer;
   transition: all var(--transition-base);
   white-space: nowrap;
   flex-shrink: 0;
   font-weight: 600;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
 .gif-btn:hover {
-  background: rgba(124, 58, 237, 0.15);
-  border-color: var(--primary-light);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  background: rgba(88, 101, 242, 0.15);
+  border-color: var(--discord-blue);
 }
 
 .gif-btn:active {
-  transform: translateY(0);
+  transform: scale(0.97);
 }
 
 .message-input {
   flex: 1;
-  padding: 10px 16px;
-  border: 1px solid rgba(124, 58, 237, 0.2);
-  border-radius: var(--radius-lg);
-  background: rgba(124, 58, 237, 0.06);
-  color: var(--text-primary);
-  font-size: 14px;
+  padding: 8px 12px;
+  border: 1px solid rgba(0, 0, 0, 0.5);
+  border-radius: var(--radius-md);
+  background: var(--discord-bg-tertiary);
+  color: var(--discord-text-primary);
+  font-size: 13px;
   transition: all var(--transition-base);
   font-family: inherit;
   resize: none;
   max-height: 100px;
-  font-weight: 500;
 }
 
 .message-input:focus {
   outline: none;
-  border-color: var(--primary-light);
-  background: rgba(124, 58, 237, 0.1);
-  box-shadow: 0 0 0 3px var(--primary-glow);
+  border-color: rgba(88, 101, 242, 0.5);
+  background: rgba(0, 0, 0, 0.3);
 }
 
 .message-input::placeholder {
-  color: var(--text-tertiary);
+  color: var(--discord-text-tertiary);
 }
 
 .send-btn {
-  padding: 10px 24px;
+  padding: 8px 16px;
   border: none;
-  border-radius: var(--radius-lg);
-  background: linear-gradient(135deg, var(--primary) 0%, var(--accent-purple) 100%);
+  border-radius: var(--radius-md);
+  background: var(--discord-blue);
   color: #fff;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   transition: all var(--transition-base);
-  box-shadow: 0 4px 12px var(--primary-glow);
   white-space: nowrap;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
   flex-shrink: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
 }
 
 .send-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px var(--primary-glow);
+  background: var(--discord-blue-hover);
 }
 
 .send-btn:active:not(:disabled) {
-  transform: translateY(0);
+  transform: scale(0.97);
 }
 
 .send-btn:disabled {
@@ -1055,11 +891,10 @@ body {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.5);
   z-index: 2000;
   align-items: center;
   justify-content: center;
-  backdrop-filter: blur(6px);
 }
 
 .gif-modal.open {
@@ -1067,102 +902,99 @@ body {
 }
 
 .gif-modal-content {
-  background: var(--bg-secondary);
-  border: 1px solid rgba(124, 58, 237, 0.2);
-  border-radius: var(--radius-2xl);
-  padding: 24px;
-  max-width: 600px;
+  background: var(--discord-bg-secondary);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  max-width: 550px;
   width: 90%;
   max-height: 80vh;
   display: flex;
   flex-direction: column;
-  box-shadow: var(--shadow-xl);
-  backdrop-filter: blur(12px);
-  animation: slideIn 0.4s ease-out;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+  animation: slideIn 0.3s ease-out;
 }
 
 .gif-modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   padding-bottom: 12px;
-  border-bottom: 1px solid rgba(124, 58, 237, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .gif-modal-header h2 {
-  font-size: 20px;
+  font-size: 18px;
   margin: 0;
-  color: var(--text-primary);
+  color: var(--discord-text-primary);
   font-weight: 700;
 }
 
 .gif-modal-close {
   background: none;
   border: none;
-  font-size: 28px;
-  color: var(--text-secondary);
+  font-size: 24px;
+  color: var(--discord-text-secondary);
   cursor: pointer;
   padding: 0;
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all var(--transition-base);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
 }
 
 .gif-modal-close:hover {
-  color: var(--primary-light);
-  background: rgba(124, 58, 237, 0.1);
+  color: var(--discord-text-primary);
+  background: rgba(79, 84, 92, 0.3);
 }
 
 .gif-search-area {
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .gif-search-input {
   width: 100%;
-  padding: 10px 16px;
-  border: 1px solid rgba(124, 58, 237, 0.2);
-  border-radius: var(--radius-lg);
-  background: rgba(124, 58, 237, 0.06);
-  color: var(--text-primary);
-  font-size: 14px;
+  padding: 8px 12px;
+  border: 1px solid rgba(0, 0, 0, 0.5);
+  border-radius: var(--radius-md);
+  background: var(--discord-bg-tertiary);
+  color: var(--discord-text-primary);
+  font-size: 13px;
   transition: all var(--transition-base);
   font-family: inherit;
 }
 
 .gif-search-input:focus {
   outline: none;
-  border-color: var(--primary-light);
-  background: rgba(124, 58, 237, 0.1);
-  box-shadow: 0 0 0 3px var(--primary-glow);
+  border-color: rgba(88, 101, 242, 0.5);
+  background: rgba(0, 0, 0, 0.3);
 }
 
 .gif-search-input::placeholder {
-  color: var(--text-tertiary);
+  color: var(--discord-text-tertiary);
 }
 
 .gif-results {
   flex: 1;
   overflow-y: auto;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 12px;
-  padding: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 10px;
+  padding: 6px;
 }
 
 .gif-item {
   aspect-ratio: 1;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   overflow: hidden;
   cursor: pointer;
-  border: 2px solid transparent;
+  border: 1px solid rgba(0, 0, 0, 0.3);
   transition: all var(--transition-base);
-  background: var(--bg-tertiary);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  background: var(--discord-bg-tertiary);
 }
 
 .gif-item img {
@@ -1173,22 +1005,21 @@ body {
 }
 
 .gif-item:hover {
-  border-color: var(--primary-light);
-  transform: scale(1.05);
-  box-shadow: 0 4px 16px var(--primary-glow);
+  border-color: var(--discord-blue);
+  transform: scale(1.04);
 }
 
 .gif-loading-text,
 .gif-error-text {
   grid-column: 1 / -1;
   text-align: center;
-  color: var(--text-tertiary);
+  color: var(--discord-text-tertiary);
   padding: 32px 16px;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .gif-error-text {
-  color: var(--error);
+  color: var(--discord-red);
 }
 
 /* ========================================
@@ -1202,11 +1033,10 @@ body {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.5);
   align-items: center;
   justify-content: center;
   z-index: 2000;
-  backdrop-filter: blur(6px);
 }
 
 .modal.hidden {
@@ -1214,53 +1044,52 @@ body {
 }
 
 .modal-content {
-  background: var(--bg-secondary);
-  border: 1px solid rgba(124, 58, 237, 0.2);
-  border-radius: var(--radius-2xl);
-  padding: 32px;
-  max-width: 450px;
+  background: var(--discord-bg-secondary);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  max-width: 400px;
   width: 90%;
   position: relative;
-  box-shadow: var(--shadow-xl);
-  animation: slideIn 0.4s ease-out;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+  animation: slideIn 0.3s ease-out;
 }
 
 .modal-close {
   position: absolute;
-  top: 16px;
-  right: 16px;
-  background: rgba(124, 58, 237, 0.1);
+  top: 12px;
+  right: 12px;
+  background: none;
   border: none;
-  color: var(--text-secondary);
-  font-size: 28px;
+  color: var(--discord-text-secondary);
+  font-size: 24px;
   cursor: pointer;
   transition: all var(--transition-base);
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-lg);
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 600;
 }
 
 .modal-close:hover {
-  color: var(--primary-light);
-  background: rgba(124, 58, 237, 0.2);
+  color: var(--discord-text-primary);
+  background: rgba(79, 84, 92, 0.3);
 }
 
 .profile-header {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
-  margin-bottom: 24px;
+  gap: 12px;
+  margin-bottom: 20px;
   text-align: center;
 }
 
 .profile-header h2 {
-  color: var(--primary-light);
-  font-size: 24px;
+  color: var(--discord-text-primary);
+  font-size: 20px;
   font-weight: 700;
 }
 
@@ -1271,22 +1100,20 @@ body {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--accent-purple) 100%);
+  background: var(--discord-blue);
   font-size: 16px;
   cursor: pointer;
   transition: all var(--transition-base);
-  box-shadow: 0 2px 8px var(--primary-glow);
 }
 
 .profile-avatar:hover {
   transform: scale(1.1);
-  box-shadow: 0 4px 12px var(--primary-glow);
 }
 
 .profile-avatar.large {
-  width: 80px;
-  height: 80px;
-  font-size: 40px;
+  width: 72px;
+  height: 72px;
+  font-size: 36px;
 }
 
 .message-avatar {
@@ -1299,98 +1126,85 @@ body {
 .profile-stats {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin-bottom: 24px;
+  gap: 10px;
+  margin-bottom: 20px;
 }
 
 .stat {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
-  background: rgba(124, 58, 237, 0.08);
-  border: 1px solid rgba(124, 58, 237, 0.2);
-  border-radius: var(--radius-lg);
-  transition: all var(--transition-base);
-}
-
-.stat:hover {
-  background: rgba(124, 58, 237, 0.12);
-  border-color: rgba(124, 58, 237, 0.3);
+  padding: 10px 12px;
+  background: var(--discord-bg-primary);
+  border: 1px solid rgba(0, 0, 0, 0.3);
+  border-radius: var(--radius-sm);
 }
 
 .stat-label {
-  color: var(--text-secondary);
-  font-size: 13px;
+  color: var(--discord-text-secondary);
+  font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
 }
 
 .stat-value {
-  color: var(--primary-light);
+  color: var(--discord-blue);
   font-weight: 700;
-  font-size: 16px;
+  font-size: 14px;
 }
 
 .edit-profile-btn {
   width: 100%;
-  padding: 12px 20px;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--accent-purple) 100%);
+  padding: 10px 16px;
+  background: var(--discord-blue);
   border: none;
   color: #fff;
   font-weight: 600;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   cursor: pointer;
   transition: all var(--transition-base);
-  box-shadow: 0 4px 12px var(--primary-glow);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  font-size: 13px;
+  letter-spacing: 0.3px;
+  font-size: 12px;
 }
 
 .edit-profile-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px var(--primary-glow);
+  background: var(--discord-blue-hover);
 }
 
 .avatar-selector {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
   width: 100%;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .avatar-selector label {
-  color: var(--primary-light);
+  color: var(--discord-text-primary);
   font-weight: 700;
-  font-size: 13px;
+  font-size: 12px;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
 }
 
 .avatar-input {
-  padding: 10px 12px;
-  background: rgba(124, 58, 237, 0.06);
-  border: 1px solid rgba(124, 58, 237, 0.2);
-  color: var(--text-primary);
-  border-radius: var(--radius-lg);
-  font-size: 14px;
+  padding: 8px 10px;
+  background: var(--discord-bg-primary);
+  border: 1px solid rgba(0, 0, 0, 0.3);
+  color: var(--discord-text-primary);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
   font-family: inherit;
-  transition: all var(--transition-base);
 }
 
 .avatar-input:focus {
   outline: none;
-  border-color: var(--primary-light);
-  background: rgba(124, 58, 237, 0.1);
-  box-shadow: 0 0 0 3px var(--primary-glow);
+  border-color: rgba(88, 101, 242, 0.5);
 }
 
 .emoji-quick-select {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
 }
 
@@ -1398,185 +1212,159 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
-  background: rgba(124, 58, 237, 0.08);
-  border: 1px solid rgba(124, 58, 237, 0.2);
-  border-radius: var(--radius-md);
+  width: 36px;
+  height: 36px;
+  background: var(--discord-bg-tertiary);
+  border: 1px solid rgba(0, 0, 0, 0.3);
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: 24px;
+  font-size: 20px;
   transition: all var(--transition-base);
 }
 
 .emoji-option:hover {
-  background: rgba(124, 58, 237, 0.2);
-  border-color: var(--primary-light);
+  border-color: rgba(88, 101, 242, 0.5);
   transform: scale(1.1);
 }
 
 .bio-edit {
   width: 100%;
-  padding: 10px 12px;
-  background: rgba(124, 58, 237, 0.06);
-  border: 1px solid rgba(124, 58, 237, 0.2);
-  color: var(--text-primary);
-  border-radius: var(--radius-lg);
+  padding: 8px 10px;
+  background: var(--discord-bg-primary);
+  border: 1px solid rgba(0, 0, 0, 0.3);
+  color: var(--discord-text-primary);
+  border-radius: var(--radius-sm);
   font-family: inherit;
-  font-size: 13px;
+  font-size: 12px;
   resize: vertical;
-  min-height: 100px;
-  transition: all var(--transition-base);
+  min-height: 80px;
 }
 
 .bio-edit:focus {
   outline: none;
-  border-color: var(--primary-light);
-  background: rgba(124, 58, 237, 0.1);
-  box-shadow: 0 0 0 3px var(--primary-glow);
+  border-color: rgba(88, 101, 242, 0.5);
 }
 
 .bio-char-count {
-  font-size: 12px;
-  color: var(--text-tertiary);
-  margin-top: 6px;
-  font-weight: 500;
+  font-size: 11px;
+  color: var(--discord-text-tertiary);
+  margin-top: 4px;
 }
 
 .profile-actions {
   display: flex;
-  gap: 12px;
-  margin-top: 20px;
+  gap: 10px;
+  margin-top: 16px;
 }
 
 .btn-primary,
 .btn-secondary {
   flex: 1;
-  padding: 10px 20px;
+  padding: 8px 12px;
   border: none;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   font-weight: 600;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 12px;
   transition: all var(--transition-base);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.3px;
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--primary) 0%, var(--accent-purple) 100%);
+  background: var(--discord-blue);
   color: #fff;
-  box-shadow: 0 4px 12px var(--primary-glow);
 }
 
 .btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px var(--primary-glow);
+  background: var(--discord-blue-hover);
 }
 
 .btn-secondary {
-  background: rgba(124, 58, 237, 0.1);
-  border: 1px solid rgba(124, 58, 237, 0.3);
-  color: var(--text-secondary);
+  background: var(--discord-bg-primary);
+  border: 1px solid rgba(0, 0, 0, 0.3);
+  color: var(--discord-text-secondary);
 }
 
 .btn-secondary:hover {
-  background: rgba(124, 58, 237, 0.2);
-  border-color: var(--primary-light);
-  color: var(--text-primary);
+  background: rgba(79, 84, 92, 0.3);
+  color: var(--discord-text-primary);
 }
 
 /* ========================================
-   FUN BUTTON MODAL
+   FUN BUTTON & MODAL
    ======================================== */
 
 .fun-button {
   width: 100%;
-  padding: 12px;
-  margin-top: 12px;
-  background: linear-gradient(135deg, var(--accent-pink) 0%, var(--accent-purple) 100%);
+  padding: 8px;
+  margin-top: 8px;
+  background: var(--discord-blue);
   border: none;
   color: #fff;
   font-weight: 700;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   cursor: pointer;
-  font-size: 13px;
+  font-size: 12px;
   transition: all var(--transition-base);
-  box-shadow: 0 4px 12px rgba(236, 72, 153, 0.3);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.3px;
 }
 
 .fun-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(236, 72, 153, 0.4);
-}
-
-.fun-button:active {
-  transform: translateY(0);
+  background: var(--discord-blue-hover);
 }
 
 .fun-modal-content {
-  max-width: 500px;
-  text-align: center;
+  max-width: 450px;
 }
 
 .fun-modal-content h2 {
-  color: var(--accent-pink);
-  margin-bottom: 24px;
-  font-size: 28px;
+  color: var(--discord-blue);
+  margin-bottom: 20px;
+  font-size: 24px;
   font-weight: 800;
-  letter-spacing: -0.5px;
 }
 
 .fun-options {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  margin-bottom: 16px;
+  gap: 10px;
 }
 
 .fun-option-btn {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 14px;
-  background: rgba(236, 72, 153, 0.08);
-  border: 1.5px solid rgba(236, 72, 153, 0.3);
-  border-radius: var(--radius-lg);
+  gap: 6px;
+  padding: 12px;
+  background: rgba(79, 84, 92, 0.3);
+  border: 1px solid rgba(79, 84, 92, 0.5);
+  border-radius: var(--radius-md);
   cursor: pointer;
   transition: all var(--transition-base);
-  color: var(--text-primary);
-  font-weight: 500;
+  color: var(--discord-text-primary);
 }
 
 .fun-option-btn:hover {
-  background: rgba(236, 72, 153, 0.15);
-  border-color: var(--accent-pink);
+  background: rgba(79, 84, 92, 0.5);
+  border-color: var(--discord-blue);
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(236, 72, 153, 0.2);
 }
 
 .fun-emoji {
-  font-size: 24px;
-  transition: transform var(--transition-base);
-}
-
-.fun-option-btn:hover .fun-emoji {
-  transform: scale(1.2) rotate(10deg);
+  font-size: 22px;
 }
 
 .fun-label {
   font-weight: 700;
   font-size: 12px;
-  color: var(--text-primary);
-  letter-spacing: 0.3px;
+  color: var(--discord-text-secondary);
 }
 
 .fun-desc {
-  font-size: 10px;
-  color: var(--text-tertiary);
-  line-height: 1.3;
+  font-size: 9px;
+  color: var(--discord-text-tertiary);
 }
 
 /* ========================================
@@ -1584,16 +1372,13 @@ body {
    ======================================== */
 
 .message.search-highlight {
-  background: rgba(168, 85, 247, 0.1);
-  border-left: 3px solid var(--accent-purple);
-  border-radius: var(--radius-md);
+  background: rgba(88, 101, 242, 0.1);
 }
 
 .search-term {
-  background: rgba(168, 85, 247, 0.3);
-  padding: 2px 6px;
-  border-radius: var(--radius-xs);
-  color: var(--accent-purple);
+  background: rgba(88, 101, 242, 0.3);
+  padding: 1px 3px;
+  border-radius: 2px;
   font-weight: 600;
 }
 
@@ -1604,36 +1389,35 @@ body {
 .emoji-picker {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  padding: 12px;
-  background: var(--bg-secondary);
-  border: 1px solid rgba(124, 58, 237, 0.2);
-  border-radius: var(--radius-lg);
+  gap: 6px;
+  padding: 10px;
+  background: var(--discord-bg-secondary);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-md);
   position: absolute;
   bottom: 100%;
   left: 0;
   z-index: 1000;
-  margin-bottom: 8px;
-  box-shadow: var(--shadow-lg);
+  margin-bottom: 6px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
 }
 
 .emoji-picker-item {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
-  font-size: 20px;
+  width: 36px;
+  height: 36px;
+  font-size: 18px;
   cursor: pointer;
-  background: rgba(124, 58, 237, 0.08);
-  border: 1px solid rgba(124, 58, 237, 0.2);
-  border-radius: var(--radius-md);
+  background: rgba(79, 84, 92, 0.2);
+  border: 1px solid rgba(79, 84, 92, 0.3);
+  border-radius: var(--radius-sm);
   transition: all var(--transition-base);
 }
 
 .emoji-picker-item:hover {
-  background: rgba(124, 58, 237, 0.2);
-  border-color: var(--primary-light);
+  background: rgba(79, 84, 92, 0.5);
   transform: scale(1.1);
 }
 
@@ -1641,162 +1425,67 @@ body {
    RESPONSIVE DESIGN
    ======================================== */
 
+@media (max-width: 1024px) {
+  .sidebar {
+    width: 200px;
+  }
+}
+
 @media (max-width: 768px) {
   .hamburger {
     display: flex;
   }
 
-  .chat-container {
-    flex-direction: column;
-  }
-
   .sidebar {
     position: absolute;
     left: 0;
-    top: 70px;
-    width: 100%;
-    height: calc(100% - 70px);
+    top: 48px;
+    width: 240px;
+    height: calc(100% - 48px);
     border-right: none;
-    border-bottom: 1px solid rgba(124, 58, 237, 0.1);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.3);
     z-index: 100;
     transform: translateX(-100%);
-    background: var(--bg-secondary);
-    backdrop-filter: blur(10px);
   }
 
   .sidebar.open {
     transform: translateX(0);
   }
 
-  .users-list {
-    display: flex;
-    overflow-x: auto;
-    overflow-y: hidden;
-    padding: 0 8px;
-    flex-direction: row;
-  }
-
-  .user-item {
-    padding: 8px 12px;
-    border: none;
-    border-bottom: 2px solid transparent;
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
-
-  .user-item:hover {
-    border-bottom-color: var(--primary);
-  }
-
-  .header-content {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-  }
-
-  .app-title {
-    font-size: 20px;
-  }
-
-  .user-info {
-    flex-direction: column;
-    gap: 4px;
-    font-size: 12px;
-  }
-
   .message-content {
     max-width: 300px;
   }
 
-  .chat-window {
-    position: relative;
-    z-index: 50;
-  }
-
-  .message-input {
-    font-size: 14px;
-    padding: 8px 12px;
-  }
-
-  .send-btn {
-    padding: 8px 16px;
-    font-size: 12px;
-  }
-
-  .gif-btn {
-    padding: 8px 12px;
-    font-size: 14px;
-  }
-
-  .login-container {
-    padding: 32px 24px;
-    border-radius: var(--radius-2xl);
-  }
-
-  .login-header h1 {
-    font-size: 28px;
-  }
-
-  .auth-container {
-    padding: 32px 24px;
+  .fun-options {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
 @media (max-width: 480px) {
   .app-title {
-    font-size: 18px;
-  }
-
-  .message-input {
-    font-size: 14px;
-    padding: 8px 12px;
-  }
-
-  .send-btn {
-    padding: 8px 12px;
-    font-size: 11px;
-  }
-
-  .message-content {
-    max-width: 250px;
-    padding: 10px 12px;
-    font-size: 13px;
-  }
-
-  .message-header {
-    font-size: 10px;
-  }
-
-  .nickname {
-    font-size: 12px;
-  }
-
-  .timestamp {
-    font-size: 10px;
-  }
-
-  .sidebar {
-    top: 60px;
-    height: calc(100% - 60px);
-  }
-
-  .header-content {
-    gap: 6px;
+    font-size: 16px;
   }
 
   .user-info {
-    gap: 2px;
+    font-size: 11px;
+    gap: 12px;
   }
 
-  .login-container {
-    padding: 24px 16px;
+  .message-content {
+    max-width: 240px;
   }
 
-  .auth-container {
-    padding: 24px 16px;
+  .sidebar {
+    width: 100%;
+  }
+
+  .chat-header {
+    padding: 10px 12px;
+    min-height: 44px;
   }
 
   .fun-options {
     grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
   }
 }
