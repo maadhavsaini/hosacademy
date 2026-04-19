@@ -18,19 +18,33 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Store active users
 const users = new Map();
 
-// Utility function to sanitize HTML/XSS attacks
+// Message types
+const MESSAGE_TYPE = {
+  TEXT: 'text',
+  GIF: 'gif'
+};
+
+// ========================================
+// UTILITY FUNCTIONS
+// ========================================
+
+/**
+ * Sanitize HTML to prevent XSS
+ */
 function sanitizeInput(text) {
   if (typeof text !== 'string') return '';
   return text
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
+    .replace(/\"/g, '&quot;')
     .replace(/'/g, '&#039;')
     .trim();
 }
 
-// Utility function to validate and clean nickname
+/**
+ * Validate and clean nickname
+ */
 function validateNickname(nickname) {
   if (!nickname || typeof nickname !== 'string') return null;
   const cleaned = nickname.trim();
@@ -39,28 +53,63 @@ function validateNickname(nickname) {
   return sanitizeInput(cleaned);
 }
 
-// Utility function to validate message
-function validateMessage(text) {
+/**
+ * Validate text message
+ */
+function validateTextMessage(text) {
   if (!text || typeof text !== 'string') return null;
   const cleaned = text.trim();
   if (cleaned.length === 0 || cleaned.length > 500) return null;
   return sanitizeInput(cleaned);
 }
 
-// Socket.io connection handling
+/**
+ * Validate GIF URL
+ */
+function validateGifUrl(url) {
+  if (!url || typeof url !== 'string') return null;
+  // Must be HTTPS
+  if (!url.startsWith('https://')) return null;
+  // Must be a reasonable length
+  if (url.length > 500) return null;
+  // Basic URL validation
+  try {
+    new URL(url);
+    return url;
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
+ * Format timestamp
+ */
+function formatTimestamp() {
+  return new Date().toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true
+  });
+}
+
+// ========================================
+// SOCKET.IO CONNECTION HANDLING
+// ========================================
+
 io.on('connection', (socket) => {
   console.log('New client connected:', socket.id);
 
-  // Handle user joining with nickname
+  /**
+   * Handle user joining with nickname
+   */
   socket.on('join', (nickname) => {
-    // Validate and sanitize nickname
     const validatedNickname = validateNickname(nickname);
     if (!validatedNickname) {
       socket.emit('error', { message: 'Invalid nickname' });
       return;
     }
 
-    // Store user info
     users.set(socket.id, {
       id: socket.id,
       nickname: validatedNickname,
@@ -68,110 +117,84 @@ io.on('connection', (socket) => {
       isTyping: false
     });
 
-    // Notify all clients about new user
+    const activeUsers = Array.from(users.values()).map(u => u.nickname);
+
     io.emit('user_connected', {
       nickname: validatedNickname,
       userCount: users.size,
-      activeUsers: Array.from(users.values()).map(u => u.nickname)
+      activeUsers: activeUsers
     });
 
-    // Log to server console
-    console.log(`${validatedNickname} joined the chat. Total users: ${users.size}`);
+    console.log(`${validatedNickname} joined. Total users: ${users.size}`);
 
-    // Send current user list to the newly connected user
-    socket.emit('update_users', {
-      activeUsers: Array.from(users.values()).map(u => u.nickname)
-    });
-
-    // Broadcast to all other users that active users list was updated
-    socket.broadcast.emit('update_users', {
-      activeUsers: Array.from(users.values()).map(u => u.nickname)
-    });
+    socket.emit('update_users', { activeUsers });
+    socket.broadcast.emit('update_users', { activeUsers });
   });
 
-  // Handle incoming messages
+  /**
+   * Handle incoming messages (both text and GIF)
+   */
   socket.on('send_message', (messageData) => {
     const user = users.get(socket.id);
-    if (user) {
-      // Validate and sanitize message
-      const validatedText = validateMessage(messageData.text);
+    if (!user) {
+      socket.emit('error', { message: 'User not found' });
+      return;
+    }
+
+    // Validate message structure
+    if (!messageData || !messageData.type) {
+      socket.emit('error', { message: 'Invalid message format' });
+      return;
+    }
+
+    let message = {
+      id: Date.now(),
+      nickname: user.nickname,
+      timestamp: formatTimestamp(),
+      type: messageData.type
+    };
+
+    // Handle text messages
+    if (messageData.type === MESSAGE_TYPE.TEXT) {
+      const validatedText = validateTextMessage(messageData.content);
       if (!validatedText) {
-        socket.emit('error', { message: 'Invalid message' });
+        socket.emit('error', { message: 'Invalid message content' });
         return;
       }
-
-      const message = {
-        id: Date.now(),
-        nickname: user.nickname,
-        text: validatedText,
-        timestamp: new Date().toLocaleTimeString('en-US', {
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-          hour12: true
-        })
-      };
-
-      // Clear typing indicator when message is sent
-      if (user.isTyping) {
-        user.isTyping = false;
-        io.emit('user_stop_typing', { nickname: user.nickname });
-      }
-
-      // Broadcast message to all clients
-      io.emit('receive_message', message);
-
-      // Log to server console
-      console.log(`[${message.timestamp}] ${message.nickname}: ${message.text}`);
+      message.content = validatedText;
     }
+    // Handle GIF messages
+    else if (messageData.type === MESSAGE_TYPE.GIF) {
+      const validatedUrl = validateGifUrl(messageData.content);
+      if (!validatedUrl) {
+        socket.emit('error', { message: 'Invalid GIF URL' });
+        return;
+      }
+      message.content = validatedUrl;
+      message.title = (messageData.title || 'GIF').substring(0, 100);
+    }
+    // Handle unknown message types
+    else {
+      socket.emit('error', { message: 'Unknown message type' });
+      return;
+    }
+
+    // Clear typing indicator
+    if (user.isTyping) {
+      user.isTyping = false;
+      io.emit('user_stop_typing', { nickname: user.nickname });
+    }
+
+    // Broadcast message to all clients
+    io.emit('receive_message', message);
+
+    // Log to console
+    console.log(`[${message.timestamp}] ${message.nickname} (${message.type}): ${message.content.substring(0, 50)}...`);
   });
 
-  // Handle incoming GIF messages
-  socket.on('send_gif', (gifData) => {
-    const user = users.get(socket.id);
-    if (user) {
-      // Validate GIF URL (basic check)
-      if (!gifData.url || typeof gifData.url !== 'string' || !gifData.url.startsWith('http')) {
-        socket.emit('error', { message: 'Invalid GIF' });
-        return;
-      }
-
-      // Limit URL length to prevent abuse
-      if (gifData.url.length > 500) {
-        socket.emit('error', { message: 'GIF URL too long' });
-        return;
-      }
-
-      const gifTitle = (gifData.title || 'GIF').substring(0, 100);
-
-      const message = {
-        id: Date.now(),
-        nickname: user.nickname,
-        text: gifTitle,
-        gifUrl: gifData.url,
-        timestamp: new Date().toLocaleTimeString('en-US', {
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-          hour12: true
-        })
-      };
-
-      // Clear typing indicator when GIF is sent
-      if (user.isTyping) {
-        user.isTyping = false;
-        io.emit('user_stop_typing', { nickname: user.nickname });
-      }
-
-      // Broadcast GIF to all clients
-      io.emit('receive_gif', message);
-
-      // Log to server console
-      console.log(`[${message.timestamp}] ${message.nickname} sent a GIF: ${gifTitle}`);
-    }
-  });
-
-  // Handle typing indicator
+  /**
+   * Handle typing indicator
+   */
   socket.on('user_typing', () => {
     const user = users.get(socket.id);
     if (user) {
@@ -180,7 +203,9 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Handle stop typing
+  /**
+   * Handle stop typing
+   */
   socket.on('user_stop_typing', () => {
     const user = users.get(socket.id);
     if (user) {
@@ -189,36 +214,41 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Handle user disconnection
+  /**
+   * Handle user disconnection
+   */
   socket.on('disconnect', () => {
     const user = users.get(socket.id);
     if (user) {
       const nickname = user.nickname;
       users.delete(socket.id);
 
-      // Notify all clients about user disconnection
+      const activeUsers = Array.from(users.values()).map(u => u.nickname);
+
       io.emit('user_disconnected', {
         nickname: nickname,
         userCount: users.size,
-        activeUsers: Array.from(users.values()).map(u => u.nickname)
+        activeUsers: activeUsers
       });
 
-      // Update all remaining users about the current active users list
-      io.emit('update_users', {
-        activeUsers: Array.from(users.values()).map(u => u.nickname)
-      });
+      io.emit('update_users', { activeUsers });
 
-      console.log(`${nickname} left the chat. Total users: ${users.size}`);
+      console.log(`${nickname} left. Total users: ${users.size}`);
     }
   });
 
-  // Handle errors
+  /**
+   * Handle socket errors
+   */
   socket.on('error', (error) => {
     console.error(`Socket error for ${socket.id}:`, error);
   });
 });
 
-// Server configuration
+// ========================================
+// SERVER STARTUP
+// ========================================
+
 const PORT = process.env.PORT || 3000;
 
 server.listen(PORT, () => {
@@ -226,11 +256,13 @@ server.listen(PORT, () => {
   console.log(`🚀 Real-time Chat Server Started`);
   console.log(`================================================`);
   console.log(`Server running at: http://localhost:${PORT}`);
-  console.log(`Open your browser and navigate to http://localhost:${PORT}`);
+  console.log(`Socket.io listening on port ${PORT}`);
   console.log(`================================================\n`);
 });
 
-// Graceful shutdown
+/**
+ * Graceful shutdown
+ */
 process.on('SIGTERM', () => {
   console.log('SIGTERM signal received: closing HTTP server');
   server.close(() => {

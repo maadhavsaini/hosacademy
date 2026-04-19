@@ -8,10 +8,15 @@ const socket = io();
 // CONSTANTS & CONFIGURATION
 // ========================================
 
-// Giphy API key (public API key - safe to expose)
-const GIPHY_API_KEY = 'dc6zaTOxFJmzC';
+const GIPHY_API_KEY = 'kspHR9RERwsOxhk5kMHvdTT6cyzYBUpd';
 const GIPHY_SEARCH_URL = 'https://api.giphy.com/v1/gifs/search';
-const GIPHY_TRENDING_URL = 'https://api.giphy.com/v1/gifs/trending';
+const MAX_MESSAGE_LENGTH = 500;
+
+// Message types enum
+const MESSAGE_TYPE = {
+  TEXT: 'text',
+  GIF: 'gif'
+};
 
 // ========================================
 // STATE VARIABLES
@@ -24,8 +29,6 @@ let typingUsers = new Set();
 let typingTimeout = null;
 let isCurrentlyTyping = false;
 let gifSearchTimeout = null;
-
-const MAX_MESSAGE_LENGTH = 500;
 
 // ========================================
 // DOM ELEMENTS
@@ -136,7 +139,6 @@ function closeGifModal() {
 
 /**
  * Search for GIFs using Giphy API
- * @param {String} query - Search query
  */
 async function searchGifs(query) {
   if (!query.trim()) {
@@ -149,6 +151,11 @@ async function searchGifs(query) {
   try {
     const url = `${GIPHY_SEARCH_URL}?api_key=${GIPHY_API_KEY}&q=${encodeURIComponent(query)}&limit=20&rating=PG`;
     const response = await fetch(url);
+    
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+
     const data = await response.json();
 
     if (data.data.length === 0) {
@@ -164,8 +171,7 @@ async function searchGifs(query) {
 }
 
 /**
- * Display GIF search results
- * @param {Array} gifs - Array of GIF objects from Giphy
+ * Display GIF search results in a grid
  */
 function displayGifResults(gifs) {
   gifResults.innerHTML = '';
@@ -176,8 +182,8 @@ function displayGifResults(gifs) {
 
     const img = document.createElement('img');
     img.src = gif.images.fixed_height_small.url;
-    img.alt = gif.title;
-    img.style.cursor = 'pointer';
+    img.alt = gif.title || 'GIF';
+    img.loading = 'lazy';
 
     gifItem.appendChild(img);
 
@@ -191,16 +197,29 @@ function displayGifResults(gifs) {
 }
 
 /**
- * Select a GIF and send it
- * @param {String} gifUrl - URL of the GIF
- * @param {String} gifTitle - Title of the GIF
+ * Select a GIF and send it to the server
  */
 function selectGif(gifUrl, gifTitle) {
-  socket.emit('send_gif', { url: gifUrl, title: gifTitle });
+  if (!gifUrl || !gifUrl.startsWith('http')) {
+    console.error('Invalid GIF URL');
+    return;
+  }
+
+  // Create message object with type 'gif'
+  const message = {
+    type: MESSAGE_TYPE.GIF,
+    content: gifUrl,
+    title: gifTitle || 'GIF'
+  };
+
+  socket.emit('send_message', message);
   closeGifModal();
 }
 
-// GIF Modal Event Listeners
+// ========================================
+// GIF MODAL EVENT LISTENERS
+// ========================================
+
 gifBtn.addEventListener('click', (e) => {
   e.preventDefault();
   openGifModal();
@@ -229,48 +248,7 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-// ========================================
-// TYPING INDICATOR FUNCTIONALITY
-// ========================================
 
-/**
- * Update the typing indicator display
- */
-function updateTypingIndicator() {
-  if (typingUsers.size === 0) {
-    typingIndicator.innerHTML = '';
-    return;
-  }
-
-  const userArray = Array.from(typingUsers);
-  let text = '';
-
-  if (userArray.length === 1) {
-    text = `<em>${escapeHTML(userArray[0])} is typing...</em>`;
-  } else if (userArray.length === 2) {
-    text = `<em>${escapeHTML(userArray[0])} and ${escapeHTML(userArray[1])} are typing...</em>`;
-  } else {
-    text = `<em>${escapeHTML(userArray[0])} and ${userArray.length - 1} others are typing...</em>`;
-  }
-
-  typingIndicator.innerHTML = text;
-}
-
-/**
- * Handle user typing event
- */
-function handleUserTyping() {
-  if (!isCurrentlyTyping && messageInput.value.trim()) {
-    isCurrentlyTyping = true;
-    socket.emit('user_typing');
-  }
-
-  clearTimeout(typingTimeout);
-  typingTimeout = setTimeout(() => {
-    isCurrentlyTyping = false;
-    socket.emit('user_stop_typing');
-  }, 1500);
-}
 
 // ========================================
 // LOGIN SCREEN FUNCTIONALITY
@@ -357,8 +335,14 @@ messageForm.addEventListener('submit', (e) => {
     return;
   }
 
+  // Create message object with type 'text'
+  const messageData = {
+    type: MESSAGE_TYPE.TEXT,
+    content: message
+  };
+
   // Emit message to server
-  socket.emit('send_message', { text: message });
+  socket.emit('send_message', messageData);
 
   // Clear input
   messageInput.value = '';
@@ -391,6 +375,22 @@ function updateSendButtonState() {
 }
 
 /**
+ * Handle typing user event
+ */
+function handleUserTyping() {
+  if (!isCurrentlyTyping && messageInput.value.trim()) {
+    isCurrentlyTyping = true;
+    socket.emit('user_typing');
+  }
+
+  clearTimeout(typingTimeout);
+  typingTimeout = setTimeout(() => {
+    isCurrentlyTyping = false;
+    socket.emit('user_stop_typing');
+  }, 1500);
+}
+
+/**
  * Handle Enter and Shift+Enter keys
  */
 messageInput.addEventListener('keydown', (e) => {
@@ -405,12 +405,11 @@ messageInput.addEventListener('keydown', (e) => {
 // ========================================
 
 /**
- * Add a user message to the chat
- * @param {Object} message - Message object with nickname, text, and timestamp
+ * Add a message to the chat
+ * @param {Object} message - Message object { type, content, nickname, timestamp }
  * @param {Boolean} isOwn - Whether the message is from the current user
- * @param {Boolean} isGif - Whether the message is a GIF
  */
-function addUserMessage(message, isOwn = false, isGif = false) {
+function addMessage(message, isOwn = false) {
   const messageElement = document.createElement('div');
   messageElement.className = `message user-message ${isOwn ? 'own' : 'other'}`;
 
@@ -431,15 +430,19 @@ function addUserMessage(message, isOwn = false, isGif = false) {
   const content = document.createElement('div');
   content.className = 'message-content';
 
-  if (isGif && message.gifUrl) {
+  // Render based on message type
+  if (message.type === MESSAGE_TYPE.GIF && message.content) {
     content.classList.add('gif-content');
     const img = document.createElement('img');
-    img.src = message.gifUrl;
-    img.alt = message.text || 'GIF';
+    img.src = message.content;
+    img.alt = message.title || 'GIF';
     img.loading = 'lazy';
+    img.style.maxWidth = '100%';
+    img.style.borderRadius = '8px';
     content.appendChild(img);
-  } else {
-    content.textContent = message.text;
+  } else if (message.type === MESSAGE_TYPE.TEXT) {
+    // Sanitize text content
+    content.textContent = message.content;
   }
 
   messageElement.appendChild(header);
@@ -545,19 +548,11 @@ document.addEventListener('click', (e) => {
 // ========================================
 
 /**
- * Handle receiving a message
+ * Handle receiving a message (text or gif)
  */
 socket.on('receive_message', (message) => {
   const isOwn = message.nickname === currentNickname;
-  addUserMessage(message, isOwn, false);
-});
-
-/**
- * Handle receiving a GIF message
- */
-socket.on('receive_gif', (message) => {
-  const isOwn = message.nickname === currentNickname;
-  addUserMessage(message, isOwn, true);
+  addMessage(message, isOwn);
 });
 
 /**
@@ -575,6 +570,31 @@ socket.on('user_stop_typing', (data) => {
   typingUsers.delete(data.nickname);
   updateTypingIndicator();
 });
+
+/**
+ * Update typing indicator display
+ */
+function updateTypingIndicator() {
+  if (typingUsers.size === 0) {
+    typingIndicator.innerHTML = '';
+    return;
+  }
+
+  const userArray = Array.from(typingUsers);
+  let text = '';
+
+  if (userArray.length === 1) {
+    text = `<em>${escapeHTML(userArray[0])} is typing...</em>`;
+  } else if (userArray.length === 2) {
+    text = `<em>${escapeHTML(userArray[0])} and ${escapeHTML(userArray[1])} are typing...</em>`;
+  } else {
+    text = `<em>${escapeHTML(userArray[0])} and ${userArray.length - 1} others are typing...</em>`;
+  }
+
+  typingIndicator.innerHTML = text;
+}
+
+
 
 /**
  * Handle user connection notification
@@ -638,35 +658,14 @@ socket.on('error', (error) => {
  * Initialize the application
  */
 function init() {
-  // Focus on nickname input on page load
   nicknameInput.focus();
-
-  // Initialize send button state
   updateSendButtonState();
-
-  // Log to console
   console.log('Real-time Chat Application Initialized');
   console.log('Waiting for nickname input...');
 }
 
-// Initialize when DOM is ready
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
 } else {
   init();
 }
-
-// ========================================
-// KEYBOARD SHORTCUTS
-// ========================================
-
-/**
- * Add keyboard shortcut for focusing message input
- */
-document.addEventListener('keydown', (e) => {
-  // Alt + C to focus message input
-  if (e.altKey && e.key === 'c' && !loginScreen.classList.contains('hidden') === false) {
-    messageInput.focus();
-    e.preventDefault();
-  }
-});
