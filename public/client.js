@@ -32,6 +32,9 @@ let typingUsers = new Set();
 let typingTimeout = null;
 let isCurrentlyTyping = false;
 let gifSearchTimeout = null;
+let searchTerm = '';
+let allMessages = [];
+let userProfiles = {};
 
 // ========================================
 // DOM ELEMENTS
@@ -69,6 +72,12 @@ const gifModal = document.getElementById('gifModal');
 const gifModalClose = document.getElementById('gifModalClose');
 const gifSearchInput = document.getElementById('gifSearchInput');
 const gifResults = document.getElementById('gifResults');
+
+// New UI Elements
+const searchInput = document.getElementById('searchInput');
+const clearSearchBtn = document.getElementById('clearSearchBtn');
+const profileModal = document.getElementById('profileModal');
+const profileModalClose = document.getElementById('profileModalClose');
 
 // ========================================
 // UTILITY FUNCTIONS
@@ -628,13 +637,36 @@ messageInput.addEventListener('keydown', (e) => {
 
 /**
  * Add a message to the chat
- * @param {Object} message - Message object { type, content, nickname, timestamp }
+ * @param {Object} message - Message object { type, content, nickname, timestamp, userId, id }
  * @param {Boolean} isOwn - Whether the message is from the current user
  */
 function addMessage(message, isOwn = false) {
   const isBot = message.nickname === 'epstein';
   const messageElement = document.createElement('div');
   messageElement.className = `message user-message ${isOwn ? 'own' : 'other'} ${isBot ? 'bot' : ''}`;
+  messageElement.dataset.messageId = message.id;
+  messageElement.dataset.userId = message.userId;
+
+  // Create avatar
+  const avatar = document.createElement('div');
+  avatar.className = 'profile-avatar message-avatar';
+  
+  // Generate avatar based on nickname
+  const firstLetter = message.nickname.charAt(0).toUpperCase();
+  const colorHash = message.nickname.charCodeAt(0) % 5;
+  const colors = ['🎨', '🎭', '🎪', '🎯', '🎲'];
+  avatar.textContent = colors[colorHash];
+  avatar.title = message.nickname;
+  avatar.style.cursor = 'pointer';
+  avatar.addEventListener('click', () => showUserProfile(message.userId || message.nickname, message.nickname));
+
+  // Create main content wrapper with avatar
+  const contentWrapper = document.createElement('div');
+  contentWrapper.style.display = 'flex';
+  contentWrapper.style.gap = '12px';
+  contentWrapper.style.width = '100%';
+
+  const messageContent = document.createElement('div');
 
   const header = document.createElement('div');
   header.className = 'message-header';
@@ -642,6 +674,8 @@ function addMessage(message, isOwn = false) {
   const nickname = document.createElement('span');
   nickname.className = 'nickname';
   nickname.textContent = message.nickname;
+  nickname.style.cursor = 'pointer';
+  nickname.addEventListener('click', () => showUserProfile(message.userId || message.nickname, message.nickname));
 
   const timestamp = document.createElement('span');
   timestamp.className = 'timestamp';
@@ -664,12 +698,52 @@ function addMessage(message, isOwn = false) {
     img.style.borderRadius = '8px';
     content.appendChild(img);
   } else if (message.type === MESSAGE_TYPE.TEXT) {
-    // Sanitize text content
-    content.textContent = message.content;
+    // Sanitize text content and highlight search terms
+    let displayText = message.content;
+    if (searchTerm && displayText.toLowerCase().includes(searchTerm.toLowerCase())) {
+      const regex = new RegExp(`(${searchTerm})`, 'gi');
+      displayText = displayText.replace(regex, '<span class="search-term">$1</span>');
+      messageElement.classList.add('search-highlight');
+    }
+    content.innerHTML = escapeHTML(message.content);
   }
 
-  messageElement.appendChild(header);
-  messageElement.appendChild(content);
+  messageContent.appendChild(header);
+  messageContent.appendChild(content);
+
+  // Add reactions section
+  const reactionsContainer = document.createElement('div');
+  reactionsContainer.className = 'message-reactions';
+  reactionsContainer.dataset.messageId = message.id;
+
+  // Placeholder reactions (would be fetched from database)
+  message.reactions = message.reactions || {};
+  for (const [emoji, users] of Object.entries(message.reactions)) {
+    const reaction = document.createElement('div');
+    reaction.className = 'reaction';
+    if (users.includes(currentNickname)) {
+      reaction.classList.add('active');
+    }
+    reaction.innerHTML = `<span class="reaction-emoji">${emoji}</span><span class="reaction-count">${users.length}</span>`;
+    reaction.addEventListener('click', () => toggleReaction(message.id, emoji));
+    reactionsContainer.appendChild(reaction);
+  }
+
+  // Add reaction button
+  const addReactionBtn = document.createElement('button');
+  addReactionBtn.className = 'add-reaction-btn';
+  addReactionBtn.textContent = '+';
+  addReactionBtn.addEventListener('click', () => showReactionPicker(message.id, addReactionBtn));
+  reactionsContainer.appendChild(addReactionBtn);
+
+  messageContent.appendChild(reactionsContainer);
+
+  contentWrapper.appendChild(avatar);
+  contentWrapper.appendChild(messageContent);
+  messageElement.appendChild(contentWrapper);
+
+  // Store message for search
+  allMessages.push(message);
 
   removeWelcomeMessageIfNeeded();
   messagesContainer.appendChild(messageElement);
@@ -701,6 +775,96 @@ function addSystemNotification(text) {
   if (isAtBottom) {
     scrollToBottom();
   }
+}
+
+/**
+ * Show user profile modal
+ * @param {String} userId - User ID
+ * @param {String} username - Username
+ */
+function showUserProfile(userId, username) {
+  // Fetch user stats from server
+  fetch(`${API_BASE}/api/users/${userId}/stats`, {
+    headers: {
+      'Authorization': `Bearer ${jwtToken}`
+    }
+  })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        document.getElementById('profileUsername').textContent = username;
+        document.getElementById('profileMessageCount').textContent = data.messageCount || 0;
+        document.getElementById('profileJoinDate').textContent = new Date(data.joinedAt).toLocaleDateString() || '-';
+        document.getElementById('profileBio').textContent = data.bio || 'No bio';
+        profileModal.classList.remove('hidden');
+      }
+    })
+    .catch(err => console.error('Error fetching user stats:', err));
+}
+
+/**
+ * Show emoji reaction picker
+ * @param {String} messageId - Message ID
+ * @param {Element} button - Button element that triggered this
+ */
+function showReactionPicker(messageId, button) {
+  const emojis = ['👍', '❤️', '😂', '😮', '😢', '🎉', '🔥', '✨'];
+  
+  // Create simple picker (could be enhanced with a popover)
+  const emoji = prompt(`Add reaction:\n${emojis.join(' ')}`);
+  if (emoji && emojis.includes(emoji)) {
+    toggleReaction(messageId, emoji);
+  }
+}
+
+/**
+ * Toggle reaction on a message
+ * @param {String} messageId - Message ID
+ * @param {String} emoji - Emoji to react with
+ */
+function toggleReaction(messageId, emoji) {
+  socket.emit('toggle_reaction', {
+    messageId: messageId,
+    emoji: emoji,
+    username: currentNickname
+  });
+}
+
+/**
+ * Filter messages by search term
+ */
+function filterMessagesBySearch() {
+  const term = searchInput.value.trim().toLowerCase();
+  searchTerm = term;
+
+  if (term === '') {
+    // Show all messages
+    document.querySelectorAll('.message.user-message').forEach(msg => {
+      msg.classList.remove('search-highlight');
+      msg.style.display = '';
+    });
+    clearSearchBtn.style.display = 'none';
+  } else {
+    // Filter and highlight
+    document.querySelectorAll('.message.user-message').forEach(msg => {
+      const content = msg.textContent.toLowerCase();
+      if (content.includes(term)) {
+        msg.style.display = '';
+        msg.classList.add('search-highlight');
+      } else {
+        msg.style.display = 'none';
+      }
+    });
+    clearSearchBtn.style.display = 'block';
+  }
+}
+
+/**
+ * Clear search filter
+ */
+function clearSearch() {
+  searchInput.value = '';
+  filterMessagesBySearch();
 }
 
 // ========================================
@@ -763,6 +927,36 @@ document.addEventListener('click', (e) => {
   if (!e.target.closest('.sidebar') && !e.target.closest('.hamburger')) {
     sidebar.classList.remove('open');
     hamburgerBtn.classList.remove('active');
+  }
+});
+
+// ========================================
+// SEARCH EVENT LISTENERS
+// ========================================
+
+/**
+ * Search input event listener
+ */
+searchInput.addEventListener('input', filterMessagesBySearch);
+clearSearchBtn.addEventListener('click', clearSearch);
+
+// ========================================
+// PROFILE MODAL EVENT LISTENERS
+// ========================================
+
+/**
+ * Close profile modal
+ */
+profileModalClose.addEventListener('click', () => {
+  profileModal.classList.add('hidden');
+});
+
+/**
+ * Close profile modal when clicking outside
+ */
+profileModal.addEventListener('click', (e) => {
+  if (e.target === profileModal) {
+    profileModal.classList.add('hidden');
   }
 });
 
@@ -846,6 +1040,33 @@ socket.on('user_disconnected', (data) => {
  */
 socket.on('update_users', (data) => {
   updateUsersList(data.activeUsers);
+});
+
+/**
+ * Handle message reaction updates
+ */
+socket.on('reaction_update', (data) => {
+  const { messageId, reactions } = data;
+  const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
+  if (messageElement) {
+    const reactionsContainer = messageElement.querySelector('.message-reactions');
+    if (reactionsContainer) {
+      // Clear existing reactions
+      reactionsContainer.querySelectorAll('.reaction').forEach(el => el.remove());
+      
+      // Add updated reactions
+      for (const [emoji, users] of Object.entries(reactions)) {
+        const reaction = document.createElement('div');
+        reaction.className = 'reaction';
+        if (users.includes(currentNickname)) {
+          reaction.classList.add('active');
+        }
+        reaction.innerHTML = `<span class="reaction-emoji">${emoji}</span><span class="reaction-count">${users.length}</span>`;
+        reaction.addEventListener('click', () => toggleReaction(messageId, emoji));
+        reactionsContainer.insertBefore(reaction, reactionsContainer.lastChild);
+      }
+    }
+  }
 });
 
 /**

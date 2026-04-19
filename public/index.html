@@ -170,6 +170,24 @@
 
         <!-- Chat Window -->
         <main class="chat-window">
+          <!-- Search Bar -->
+          <div class="chat-search">
+            <input
+              type="text"
+              id="searchInput"
+              class="search-input"
+              placeholder="Search messages..."
+              autocomplete="off"
+            />
+            <button
+              id="clearSearchBtn"
+              class="clear-search-btn"
+              style="display: none"
+            >
+              ×
+            </button>
+          </div>
+
           <!-- Messages Container -->
           <div class="messages-container" id="messagesContainer">
             <!-- Messages will be appended here -->
@@ -218,6 +236,31 @@
         </div>
         <div class="gif-results" id="gifResults">
           <p class="gif-loading-text">Search for GIFs to get started</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- User Profile Modal -->
+    <div id="profileModal" class="modal hidden">
+      <div class="modal-content">
+        <button class="modal-close" id="profileModalClose">&times;</button>
+        <div class="profile-header">
+          <div class="profile-avatar large" id="profileAvatar">👤</div>
+          <h2 id="profileUsername">Username</h2>
+        </div>
+        <div class="profile-stats">
+          <div class="stat">
+            <span class="stat-label">Messages:</span>
+            <span class="stat-value" id="profileMessageCount">0</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Joined:</span>
+            <span class="stat-value" id="profileJoinDate">-</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Bio:</span>
+            <span class="stat-value" id="profileBio">No bio</span>
+          </div>
         </div>
       </div>
     </div>

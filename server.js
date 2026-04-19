@@ -304,6 +304,50 @@ app.get('/api/auth/validate', (req, res) => {
 });
 
 /**
+ * Get user stats
+ */
+app.get('/api/users/:userId/stats', (req, res) => {
+  try {
+    const { userId } = req.params;
+    const token = req.headers.authorization?.split(' ')[1];
+
+    if (!token) {
+      return res.status(401).json({ error: 'No token provided' });
+    }
+
+    const decoded = verifyToken(token);
+    if (!decoded) {
+      return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+
+    // Fetch user
+    const user = User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Get message count
+    const messageStmt = db.prepare(`
+      SELECT COUNT(*) as count FROM messages WHERE user_id = ?
+    `);
+    const { count: messageCount } = messageStmt.get(userId);
+
+    // Get user stats
+    const stats = User.getStats(userId);
+
+    res.json({ 
+      success: true, 
+      messageCount: messageCount,
+      joinedAt: user.created_at,
+      bio: user.bio
+    });
+  } catch (error) {
+    console.error('Error fetching user stats:', error);
+    res.status(500).json({ error: 'Failed to fetch user stats' });
+  }
+});
+
+/**
  * Middleware to verify JWT token
  */
 function verifyToken(token) {
@@ -416,10 +460,12 @@ io.on('connection', (socket) => {
     }
 
     let message = {
-      id: Date.now(),
+      id: Date.now().toString(),
+      userId: user.userId,
       nickname: user.username,
       timestamp: formatTimestamp(),
-      type: messageData.type
+      type: messageData.type,
+      reactions: {}
     };
 
     // Handle text messages
@@ -442,11 +488,13 @@ io.on('connection', (socket) => {
         if (query.length === 0) {
           // Send error message from bot
           const errorBotMessage = {
-            id: Date.now() + 1,
+            id: (Date.now() + 1).toString(),
+            userId: null,
             nickname: 'epstein',
             timestamp: formatTimestamp(),
             type: MESSAGE_TYPE.TEXT,
-            content: 'Hey! You gotta ask me something. /epstein [your question]'
+            content: 'Hey! You gotta ask me something. /epstein [your question]',
+            reactions: {}
           };
           io.emit('receive_message', errorBotMessage);
           return;
@@ -477,11 +525,13 @@ io.on('connection', (socket) => {
         
         responseParts.forEach((part, index) => {
           const botMessage = {
-            id: Date.now() + 1 + index,
+            id: (Date.now() + 1 + index).toString(),
+            userId: null,
             nickname: 'epstein',
             timestamp: formatTimestamp(),
             type: MESSAGE_TYPE.TEXT,
-            content: part
+            content: part,
+            reactions: {}
           };
           
           io.emit('receive_message', botMessage);
@@ -524,6 +574,19 @@ io.on('connection', (socket) => {
       return;
     }
 
+    // Save message to database
+    try {
+      if (user.userId) {
+        const stmt = db.prepare(`
+          INSERT INTO messages (id, user_id, username, type, content, created_at)
+          VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        `);
+        stmt.run(message.id, user.userId, message.nickname, message.type, message.content);
+      }
+    } catch (err) {
+      console.error('Error saving message to database:', err);
+    }
+
     // Clear typing indicator
     if (user.isTyping) {
       user.isTyping = false;
@@ -553,6 +616,69 @@ io.on('connection', (socket) => {
     if (user) {
       user.isTyping = false;
       socket.broadcast.emit('user_stop_typing', { nickname: user.username });
+    }
+  });
+
+  /**
+   * Handle message reactions
+   */
+  socket.on('toggle_reaction', (data) => {
+    const { messageId, emoji, username } = data;
+    try {
+      const reactionId = `${messageId}-${username}-${emoji}`;
+      
+      // Check if reaction exists
+      const stmt = db.prepare(`
+        SELECT * FROM reactions WHERE message_id = ? AND user_id = (
+          SELECT id FROM users WHERE username = ?
+        ) AND emoji = ?
+      `);
+      const existing = stmt.get(messageId, username, emoji);
+
+      if (existing) {
+        // Remove reaction
+        const deleteStmt = db.prepare(`
+          DELETE FROM reactions WHERE id = ?
+        `);
+        deleteStmt.run(existing.id);
+      } else {
+        // Add reaction
+        const userId = db.prepare(`SELECT id FROM users WHERE username = ?`).get(username)?.id;
+        if (userId) {
+          const insertStmt = db.prepare(`
+            INSERT INTO reactions (id, message_id, user_id, emoji, created_at)
+            VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+          `);
+          insertStmt.run(reactionId, messageId, userId, emoji);
+        }
+      }
+
+      // Fetch all reactions for this message
+      const reactionsStmt = db.prepare(`
+        SELECT emoji, user_id FROM reactions WHERE message_id = ?
+      `);
+      const reactions = reactionsStmt.all(messageId);
+      
+      // Group by emoji
+      const reactionMap = {};
+      reactions.forEach(r => {
+        if (!reactionMap[r.emoji]) {
+          reactionMap[r.emoji] = [];
+        }
+        const userStmt = db.prepare(`SELECT username FROM users WHERE id = ?`);
+        const user = userStmt.get(r.user_id);
+        if (user) {
+          reactionMap[r.emoji].push(user.username);
+        }
+      });
+
+      // Broadcast reaction update
+      io.emit('reaction_update', {
+        messageId: messageId,
+        reactions: reactionMap
+      });
+    } catch (err) {
+      console.error('Error handling reaction:', err);
     }
   });
 
