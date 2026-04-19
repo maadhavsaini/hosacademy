@@ -1684,6 +1684,26 @@ if (profilePictureUpload) {
 // ========================================
 
 /**
+ * Handle message history on connect (load previous messages)
+ */
+socket.on('message_history', (data) => {
+  const { messages } = data;
+  console.log(`📚 Loaded ${messages.length} messages from history`);
+  
+  // Clear welcome message before loading history
+  removeWelcomeMessageIfNeeded();
+  
+  // Add all historical messages
+  messages.forEach(msg => {
+    const isOwn = msg.nickname === currentNickname;
+    addMessage(msg, isOwn);
+  });
+  
+  // Scroll to bottom after loading history
+  setTimeout(() => scrollToBottom(), 100);
+});
+
+/**
  * Handle receiving a message (text or gif)
  */
 socket.on('receive_message', (message) => {
@@ -1766,11 +1786,13 @@ socket.on('update_users', (data) => {
  */
 socket.on('reaction_update', (data) => {
   const { messageId, reactions } = data;
+  console.log(`✨ Reaction update for message ${messageId}:`, reactions);
+  
   const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
   if (messageElement) {
     const reactionsContainer = messageElement.querySelector('.message-reactions');
     if (reactionsContainer) {
-      // Clear existing reactions
+      // Clear existing reactions (but not the + button)
       reactionsContainer.querySelectorAll('.reaction').forEach(el => el.remove());
       
       // Add updated reactions
@@ -1782,9 +1804,14 @@ socket.on('reaction_update', (data) => {
         }
         reaction.innerHTML = `<span class="reaction-emoji">${emoji}</span><span class="reaction-count">${users.length}</span>`;
         reaction.addEventListener('click', () => toggleReaction(messageId, emoji));
+        // Insert before the + button (which is the last child)
         reactionsContainer.insertBefore(reaction, reactionsContainer.lastChild);
       }
+      
+      console.log(`✅ Updated reactions display for message ${messageId}`);
     }
+  } else {
+    console.log(`⚠️ Message element not found for reaction update: ${messageId}`);
   }
 });
 

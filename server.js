@@ -191,6 +191,37 @@ function splitLongResponse(text, maxLength = 300) {
 }
 
 /**
+ * Fetch reactions for a message from database
+ * Returns object like { '😀': ['user1', 'user2'], '❤️': ['user1'] }
+ */
+function getMessageReactions(messageId) {
+  try {
+    const stmt = db.prepare(`
+      SELECT emoji, user_id FROM reactions WHERE message_id = ?
+    `);
+    const reactions = stmt.all(messageId);
+    
+    // Group by emoji and get usernames
+    const reactionMap = {};
+    reactions.forEach(r => {
+      if (!reactionMap[r.emoji]) {
+        reactionMap[r.emoji] = [];
+      }
+      const userStmt = db.prepare(`SELECT username FROM users WHERE id = ?`);
+      const user = userStmt.get(r.user_id);
+      if (user && !reactionMap[r.emoji].includes(user.username)) {
+        reactionMap[r.emoji].push(user.username);
+      }
+    });
+    
+    return reactionMap;
+  } catch (err) {
+    console.error('Error fetching reactions:', err);
+    return {};
+  }
+}
+
+/**
  * Format timestamp
  */
 function formatTimestamp() {
@@ -524,6 +555,30 @@ io.on('connection', (socket) => {
     socket.emit('update_users', { activeUsers });
     socket.emit('fun_mode_changed', { mode: globalFunMode, username: 'System' });
     socket.broadcast.emit('update_users', { activeUsers });
+    
+    // Send recent message history (last 50 messages)
+    try {
+      const stmt = db.prepare(`
+        SELECT id, user_id, username, type, content, created_at FROM messages
+        ORDER BY created_at DESC LIMIT 50
+      `);
+      const messages = stmt.all().reverse(); // Reverse to get chronological order
+      
+      // Enrich messages with reactions from database
+      const messagesWithReactions = messages.map(msg => ({
+        id: msg.id,
+        userId: msg.user_id,
+        nickname: msg.username,
+        type: msg.type,
+        content: msg.content,
+        timestamp: msg.created_at,
+        reactions: getMessageReactions(msg.id)
+      }));
+      
+      socket.emit('message_history', { messages: messagesWithReactions });
+    } catch (err) {
+      console.error('Error fetching message history:', err);
+    }
   });
 
   /**
@@ -587,7 +642,7 @@ io.on('connection', (socket) => {
       nickname: user.username,
       timestamp: formatTimestamp(),
       type: messageData.type,
-      reactions: {}
+      reactions: {} // Will be populated before broadcast
     };
 
     // Handle text messages
@@ -675,7 +730,8 @@ io.on('connection', (socket) => {
         return;
       }
 
-      // Broadcast normal text message
+      // Broadcast normal text message with reactions
+      message.reactions = getMessageReactions(message.id);
       const displayMessage = {
         ...message,
         content: applyTextTransformation(message.content)
@@ -828,8 +884,14 @@ io.on('connection', (socket) => {
 
       console.log(`📤 Broadcasting reaction update:`, reactionMap);
       
-      // Broadcast reaction update
+      // Broadcast reaction update to all clients
       io.emit('reaction_update', {
+        messageId: messageId,
+        reactions: reactionMap
+      });
+      
+      // Also emit a batch update event for completeness
+      socket.emit('reaction_success', {
         messageId: messageId,
         reactions: reactionMap
       });
