@@ -40,6 +40,8 @@ let currentProfileAvatar = '';
 let searchCollapsed = false;
 let messageTransformWords = [];
 let messageTransformActive = false;
+let userIdMap = {}; // Maps username to userId for profile lookups
+const MESSAGE_GROUP_TIME = 5 * 60 * 1000; // 5 minutes in milliseconds
 
 // ========================================
 // DOM ELEMENTS
@@ -687,6 +689,33 @@ messageInput.addEventListener('keydown', (e) => {
 // ========================================
 
 /**
+ * Check if message should show header (name/timestamp)
+ * Returns true if header should be shown, false if it should be hidden for consecutive messages
+ */
+function shouldShowMessageHeader(message) {
+  const lastMessageElement = messagesContainer.querySelector('.message.user-message:not(.system):last-of-type');
+  if (!lastMessageElement) return true; // First message, always show header
+
+  const lastUserId = lastMessageElement.dataset.userId;
+  const currentUserId = message.userId;
+
+  if (lastUserId !== currentUserId) return true; // Different user, show header
+
+  // Check time difference
+  const lastTimestampText = lastMessageElement.querySelector('.timestamp')?.textContent;
+  if (!lastTimestampText) return true;
+
+  try {
+    // Parse timestamps and check if they're within the group time
+    const lastTime = new Date(lastMessageElement.dataset.timestamp);
+    const currentTime = new Date(message.timestamp);
+    return (currentTime - lastTime) > MESSAGE_GROUP_TIME;
+  } catch (e) {
+    return true; // If we can't parse, show header to be safe
+  }
+}
+
+/**
  * Add a message to the chat
  * @param {Object} message - Message object { type, content, nickname, timestamp, userId, id }
  * @param {Boolean} isOwn - Whether the message is from the current user
@@ -697,6 +726,12 @@ function addMessage(message, isOwn = false) {
   messageElement.className = `message user-message ${isOwn ? 'own' : 'other'} ${isBot ? 'bot' : ''}`;
   messageElement.dataset.messageId = message.id;
   messageElement.dataset.userId = message.userId;
+  messageElement.dataset.timestamp = message.timestamp; // Store for time comparison
+
+  // Store userId mapping for sidebar lookups
+  if (message.userId) {
+    userIdMap[message.nickname] = message.userId;
+  }
 
   // Create avatar
   const avatar = document.createElement('div');
@@ -719,8 +754,14 @@ function addMessage(message, isOwn = false) {
 
   const messageContent = document.createElement('div');
 
+  // Check if header should be shown for consecutive messages
+  const showHeader = shouldShowMessageHeader(message);
+  
   const header = document.createElement('div');
   header.className = 'message-header';
+  if (!showHeader) {
+    header.style.display = 'none';
+  }
 
   const nickname = document.createElement('span');
   nickname.className = 'nickname';
@@ -837,6 +878,30 @@ function showUserProfile(userId, username) {
   editingProfileUserId = userId;
   const isOwnProfile = userId === currentUserId;
 
+  // Function to display profile data
+  const displayProfile = (data) => {
+    // Update view mode
+    document.getElementById('profileUsername').textContent = username;
+    document.getElementById('profileMessageCount').textContent = data.messageCount || 0;
+    document.getElementById('profileJoinDate').textContent = new Date(data.joinedAt).toLocaleDateString() || '-';
+    document.getElementById('profileBio').textContent = data.bio || 'No bio';
+    
+    // Set avatar
+    const avatar = data.avatar || '👤';
+    document.getElementById('profileAvatar').textContent = avatar;
+    currentProfileAvatar = avatar;
+
+    // Show edit button only for own profile
+    editProfileBtn.style.display = isOwnProfile ? 'block' : 'none';
+
+    // Show view mode, hide edit mode
+    profileViewMode.style.display = 'block';
+    profileEditMode.style.display = 'none';
+    editProfileBtn.onclick = () => enterEditMode(data);
+
+    profileModal.classList.remove('hidden');
+  };
+
   // Fetch user stats from server
   fetch(`${API_BASE}/api/users/${userId}/stats`, {
     headers: {
@@ -846,29 +911,27 @@ function showUserProfile(userId, username) {
     .then(res => res.json())
     .then(data => {
       if (data.success) {
-        // Update view mode
-        document.getElementById('profileUsername').textContent = username;
-        document.getElementById('profileMessageCount').textContent = data.messageCount || 0;
-        document.getElementById('profileJoinDate').textContent = new Date(data.joinedAt).toLocaleDateString() || '-';
-        document.getElementById('profileBio').textContent = data.bio || 'No bio';
-        
-        // Set avatar
-        const avatar = data.avatar || '👤';
-        document.getElementById('profileAvatar').textContent = avatar;
-        currentProfileAvatar = avatar;
-
-        // Show edit button only for own profile
-        editProfileBtn.style.display = isOwnProfile ? 'block' : 'none';
-
-        // Show view mode, hide edit mode
-        profileViewMode.style.display = 'block';
-        profileEditMode.style.display = 'none';
-        editProfileBtn.onclick = () => enterEditMode(data);
-
-        profileModal.classList.remove('hidden');
+        displayProfile(data);
+      } else {
+        // If fetch failed (e.g., userId is a username), show a default profile view
+        displayProfile({
+          messageCount: 0,
+          joinedAt: new Date(),
+          bio: 'User profile',
+          avatar: '👤'
+        });
       }
     })
-    .catch(err => console.error('Error fetching user stats:', err));
+    .catch(err => {
+      console.error('Error fetching user stats:', err);
+      // Show a default profile view on error
+      displayProfile({
+        messageCount: 0,
+        joinedAt: new Date(),
+        bio: 'User profile',
+        avatar: '👤'
+      });
+    });
 }
 
 /**
@@ -1260,7 +1323,13 @@ function updateUsersList(activeUsers) {
 
     // Click to show profile
     userItem.addEventListener('click', () => {
-      const userId = nickname === currentNickname ? currentUserId : nickname;
+      let userId;
+      if (nickname === currentNickname) {
+        userId = currentUserId;
+      } else {
+        // Try to use stored userId from messages, otherwise use nickname
+        userId = userIdMap[nickname] || nickname;
+      }
       showUserProfile(userId, nickname);
     });
 
@@ -1640,7 +1709,7 @@ socket.on('transform_message_stop', () => {
 socket.on('disconnect', () => {
   console.log('Disconnected from server');
   isConnected = false;
-  addSystemNotification('⚠ Connection lost. Please refresh the page.');
+  addSystemNotification('🚨 CHUD ALERT! reset browser, i added something new');
 });
 
 /**
