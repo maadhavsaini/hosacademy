@@ -43,6 +43,11 @@ let messageTransformActive = false;
 let userIdMap = {}; // Maps username to userId for profile lookups
 const MESSAGE_GROUP_TIME = 5 * 60 * 1000; // 5 minutes in milliseconds
 
+// Fun mode states
+let dheerajspeakActive = false;
+let harditspeakActive = false;
+let rattanspeakActive = false;
+
 // ========================================
 // DOM ELEMENTS
 // ========================================
@@ -103,7 +108,13 @@ const funModalClose = document.getElementById('funModalClose');
 const gifAnimationBtn = document.getElementById('gifAnimationBtn');
 const messageTransformBtn = document.getElementById('messageTransformBtn');
 const quietModeBtn = document.getElementById('quietModeBtn');
+const dheerajspeakBtn = document.getElementById('dheerajspeakBtn');
+const harditspeakBtn = document.getElementById('harditspeakBtn');
+const rattanspeakBtn = document.getElementById('rattanspeakBtn');
 const gifAnimationContainer = document.getElementById('gifAnimationContainer');
+
+// Profile Upload Element
+const profilePictureUpload = document.getElementById('profilePictureUpload');
 
 // GIF Animation Modal Elements
 const gifAnimationModal = document.getElementById('gifAnimationModal');
@@ -602,6 +613,19 @@ messageForm.addEventListener('submit', (e) => {
     return;
   }
 
+  // Handle Rattanspeak mode - silently discard message
+  if (rattanspeakActive) {
+    // Random chance (1/1000000) for Rattan to say "hi"
+    const randomNumber = Math.floor(Math.random() * 1000000) + 1;
+    if (randomNumber === 676767) {
+      socket.emit('rattan_message', { username: currentNickname });
+    }
+    messageInput.value = '';
+    messageInput.focus();
+    updateSendButtonState();
+    return;
+  }
+
   // Handle /transform command
   if (message.toLowerCase().startsWith('/transform ')) {
     const word = message.substring('/transform '.length).trim();
@@ -716,6 +740,41 @@ function shouldShowMessageHeader(message) {
 }
 
 /**
+ * Transform message based on active fun modes
+ * @param {String} content - Original message content
+ * @returns {String} Transformed content
+ */
+function transformMessageContent(content) {
+  if (dheerajspeakActive) {
+    // Each word ends with -poo
+    return content
+      .split(/(\s+)/)
+      .map(word => {
+        if (word.trim() === '') return word;
+        if (word.endsWith('-poo')) return word;
+        return word + '-poo';
+      })
+      .join('');
+  }
+  
+  if (harditspeakActive) {
+    // Words on new lines with interjections
+    const interjections = ['um', 'uh', 'woah'];
+    const words = content.split(/\s+/);
+    let result = [];
+    words.forEach((word, index) => {
+      if (index > 0 && Math.random() < 0.3) {
+        result.push(interjections[Math.floor(Math.random() * interjections.length)]);
+      }
+      result.push(word);
+    });
+    return result.join('\n');
+  }
+  
+  return content;
+}
+
+/**
  * Add a message to the chat
  * @param {Object} message - Message object { type, content, nickname, timestamp, userId, id }
  * @param {Boolean} isOwn - Whether the message is from the current user
@@ -761,6 +820,7 @@ function addMessage(message, isOwn = false) {
   header.className = 'message-header';
   if (!showHeader) {
     header.style.display = 'none';
+    messageElement.classList.add('grouped-message'); // Add class when header is hidden
   }
 
   const nickname = document.createElement('span');
@@ -779,6 +839,12 @@ function addMessage(message, isOwn = false) {
   const content = document.createElement('div');
   content.className = 'message-content';
 
+  // Transform message content based on fun modes (but not for Rattanspeak - those messages don't show)
+  let displayContent = message.content;
+  if (!rattanspeakActive) {
+    displayContent = transformMessageContent(displayContent);
+  }
+
   // Render based on message type
   if (message.type === MESSAGE_TYPE.GIF && message.content) {
     content.classList.add('gif-content');
@@ -791,13 +857,12 @@ function addMessage(message, isOwn = false) {
     content.appendChild(img);
   } else if (message.type === MESSAGE_TYPE.TEXT) {
     // Sanitize text content and highlight search terms
-    let displayText = message.content;
-    if (searchTerm && displayText.toLowerCase().includes(searchTerm.toLowerCase())) {
+    if (searchTerm && displayContent.toLowerCase().includes(searchTerm.toLowerCase())) {
       const regex = new RegExp(`(${searchTerm})`, 'gi');
-      displayText = displayText.replace(regex, '<span class="search-term">$1</span>');
+      displayContent = displayContent.replace(regex, '<span class="search-term">$1</span>');
       messageElement.classList.add('search-highlight');
     }
-    content.innerHTML = escapeHTML(message.content);
+    content.innerHTML = escapeHTML(displayContent);
   }
 
   messageContent.appendChild(header);
@@ -1553,6 +1618,77 @@ quietModeBtn.addEventListener('click', () => {
   addSystemNotification('🔊 AAAAAHHHHHHH!!!');
 });
 
+/**
+ * Toggle Dheerajspeak mode
+ */
+dheerajspeakBtn.addEventListener('click', () => {
+  dheerajspeakActive = !dheerajspeakActive;
+  harditspeakActive = false;
+  rattanspeakActive = false;
+  socket.emit('set_fun_mode', {
+    username: currentNickname,
+    mode: dheerajspeakActive ? 'dheerajspeak' : 'none'
+  });
+  funModal.classList.add('hidden');
+  addSystemNotification(`${dheerajspeakActive ? '💩 Dheerajspeak ACTIVATED! Every word ends with -poo!' : '💩 Dheerajspeak deactivated'}`);
+});
+
+/**
+ * Toggle Harditspeak mode
+ */
+harditspeakBtn.addEventListener('click', () => {
+  harditspeakActive = !harditspeakActive;
+  dheerajspeakActive = false;
+  rattanspeakActive = false;
+  socket.emit('set_fun_mode', {
+    username: currentNickname,
+    mode: harditspeakActive ? 'harditspeak' : 'none'
+  });
+  funModal.classList.add('hidden');
+  addSystemNotification(`${harditspeakActive ? '📺 Harditspeak ACTIVATED! Words on new lines!' : '📺 Harditspeak deactivated'}`);
+});
+
+/**
+ * Toggle Rattanspeak mode
+ */
+rattanspeakBtn.addEventListener('click', () => {
+  rattanspeakActive = !rattanspeakActive;
+  dheerajspeakActive = false;
+  harditspeakActive = false;
+  socket.emit('set_fun_mode', {
+    username: currentNickname,
+    mode: rattanspeakActive ? 'rattanspeak' : 'none'
+  });
+  funModal.classList.add('hidden');
+  addSystemNotification(`${rattanspeakActive ? '🤐 Rattanspeak ACTIVATED! Messages are silent... waiting for the 1/1M chance...' : '🤐 Rattanspeak deactivated'}`);
+});
+
+/**
+ * Handle profile picture upload
+ */
+if (profilePictureUpload) {
+  profilePictureUpload.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const dataUrl = event.target.result;
+        setProfileAvatar(dataUrl);
+        // Update the display
+        document.getElementById('profileAvatarEdit').textContent = '';
+        const img = document.createElement('img');
+        img.src = dataUrl;
+        img.style.width = '60px';
+        img.style.height = '60px';
+        img.style.borderRadius = '8px';
+        img.style.objectFit = 'cover';
+        document.getElementById('profileAvatarEdit').appendChild(img);
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+}
+
 // ========================================
 // SOCKET.IO EVENT LISTENERS
 // ========================================
@@ -1701,6 +1837,15 @@ socket.on('transform_message_start', (data) => {
 socket.on('transform_message_stop', () => {
   messageTransformActive = false;
   messageTransformWords = [];
+});
+
+/**
+ * Handle fun mode changes
+ */
+socket.on('fun_mode_changed', (data) => {
+  // Just acknowledge the mode change - all clients will update based on their local state
+  // This is mainly for logging/debugging on the server side
+  console.log(`Fun mode changed by ${data.username}: ${data.mode}`);
 });
 
 /**

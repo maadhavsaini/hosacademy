@@ -558,6 +558,10 @@ body {
   margin-bottom: 4px;
 }
 
+.message.user-message.grouped-message {
+  margin-bottom: 1px;
+}
+
 .message.user-message.own {
   align-items: flex-end;
 }
