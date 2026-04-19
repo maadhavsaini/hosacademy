@@ -43,6 +43,10 @@ try {
 // Store active users
 const users = new Map();
 
+// Store conversation history (last 20 messages for context)
+const conversationHistory = [];
+const MAX_HISTORY = 20;
+
 // Message types
 const MESSAGE_TYPE = {
   TEXT: 'text',
@@ -120,23 +124,36 @@ function formatTimestamp() {
 /**
  * Call Groq API to get bot response
  */
-async function getBotResponse(query) {
+async function getBotResponse(query, history = []) {
   try {
     console.log(`📤 Calling Groq API with query: "${query}"`);
+    
+    // Build messages array with history context
+    const messages = [
+      {
+        role: 'system',
+        content: PREP_MESSAGE
+      }
+    ];
+    
+    // Add recent conversation history as context
+    history.forEach(msg => {
+      messages.push({
+        role: msg.sender === 'epstein' ? 'assistant' : 'user',
+        content: msg.content
+      });
+    });
+    
+    // Add current query
+    messages.push({
+      role: 'user',
+      content: query
+    });
     
     const response = await groq.chat.completions.create({
       model: 'llama-3.1-8b-instant',
       max_tokens: 256,
-      messages: [
-        {
-          role: 'system',
-          content: PREP_MESSAGE
-        },
-        {
-          role: 'user',
-          content: query
-        }
-      ]
+      messages: messages
     });
 
     const reply = response.choices[0].message.content;
@@ -404,8 +421,25 @@ io.on('connection', (socket) => {
           return;
         }
 
-        // Get response from Groq API
-        const botResponse = await getBotResponse(query);
+        // Get response from Groq API with conversation history
+        const botResponse = await getBotResponse(query, conversationHistory);
+
+        // Add user message to history
+        conversationHistory.push({
+          sender: 'user',
+          content: query
+        });
+
+        // Add bot response to history
+        conversationHistory.push({
+          sender: 'epstein',
+          content: botResponse
+        });
+
+        // Keep only last MAX_HISTORY messages
+        if (conversationHistory.length > MAX_HISTORY) {
+          conversationHistory.shift();
+        }
 
         // Send bot response
         const botMessage = {
@@ -423,6 +457,17 @@ io.on('connection', (socket) => {
 
       // Broadcast normal text message
       io.emit('receive_message', message);
+      
+      // Add to conversation history for bot context
+      conversationHistory.push({
+        sender: message.nickname,
+        content: message.content
+      });
+      
+      // Keep only last MAX_HISTORY messages
+      if (conversationHistory.length > MAX_HISTORY) {
+        conversationHistory.shift();
+      }
     }
     // Handle GIF messages
     else if (messageData.type === MESSAGE_TYPE.GIF) {
