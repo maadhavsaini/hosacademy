@@ -59,61 +59,9 @@ const gifModalClose = document.getElementById('gifModalClose');
 const gifSearchInput = document.getElementById('gifSearchInput');
 const gifResults = document.getElementById('gifResults');
 
-// Brainrot Mode Elements
-const brainrotToggle = document.getElementById('brainrotToggle');
-
-// ========================================
-// BRAINROT SLANG DICTIONARY
-// ========================================
-
-const slangDictionary = {
-  'good': 'tuffblud',
-  'bad': 'chudtastic',
-  'brother': 'blud',
-  'yes': 'hell yeah',
-  'no': 'nah',
-  'hello': 'yo chat',
-  'hi': 'yo',
-  'crazy': 'tuff',
-  'wtf': 'erm, what the tung tung?!',
-  'cool': 'based',
-  'friend': 'homie',
-  'why': 'ayo why tho',
-  'what': 'wha',
-  'okay': 'ight',
-  'thanks': 'thanks g',
-  'sorry': 'my bad blud'
-};
-
 // ========================================
 // UTILITY FUNCTIONS
 // ========================================
-
-/**
- * Translate text to Brainrot slang if Brainrot Mode is enabled
- */
-function translateToBrainrot(text) {
-  if (!brainrotToggle.checked) {
-    return text;
-  }
-
-  let translatedText = text;
-
-  // Replace whole words only (case-insensitive)
-  Object.entries(slangDictionary).forEach(([original, slang]) => {
-    // Create regex with word boundaries, case-insensitive
-    const regex = new RegExp(`\\b${original}\\b`, 'gi');
-    translatedText = translatedText.replace(regex, (match) => {
-      // Preserve case: if original word was capitalized, capitalize the slang
-      if (match[0] === match[0].toUpperCase()) {
-        return slang.charAt(0).toUpperCase() + slang.slice(1);
-      }
-      return slang;
-    });
-  });
-
-  return translatedText;
-}
 
 /**
  * Escape HTML to prevent XSS
@@ -387,13 +335,10 @@ messageForm.addEventListener('submit', (e) => {
     return;
   }
 
-  // Apply Brainrot translation if enabled
-  const translatedMessage = translateToBrainrot(message);
-
   // Create message object with type 'text'
   const messageData = {
     type: MESSAGE_TYPE.TEXT,
-    content: translatedMessage
+    content: message
   };
 
   // Emit message to server
@@ -465,8 +410,9 @@ messageInput.addEventListener('keydown', (e) => {
  * @param {Boolean} isOwn - Whether the message is from the current user
  */
 function addMessage(message, isOwn = false) {
+  const isBot = message.nickname === '🤖 Placeholder';
   const messageElement = document.createElement('div');
-  messageElement.className = `message user-message ${isOwn ? 'own' : 'other'}`;
+  messageElement.className = `message user-message ${isOwn ? 'own' : 'other'} ${isBot ? 'bot' : ''}`;
 
   const header = document.createElement('div');
   header.className = 'message-header';

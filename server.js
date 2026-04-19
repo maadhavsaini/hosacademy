@@ -1,7 +1,9 @@
+require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const socketIO = require('socket.io');
 const path = require('path');
+const { Groq } = require('groq-sdk');
 
 const app = express();
 const server = http.createServer(app);
@@ -14,6 +16,11 @@ const io = socketIO(server, {
 
 // Serve static files from the 'public' directory
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Initialize Groq client
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY
+});
 
 // Store active users
 const users = new Map();
@@ -92,6 +99,31 @@ function formatTimestamp() {
   });
 }
 
+/**
+ * Call Groq API to get bot response
+ */
+async function getBotResponse(query) {
+  try {
+    const message = await groq.messages.create({
+      model: 'llama3-8b-8192',
+      max_tokens: 256,
+      messages: [
+        {
+          role: 'user',
+          content: query
+        }
+      ],
+      system: 'You are a fun, slightly unhinged AI bot named Placeholder participating in a group chat. Keep responses brief (1-2 sentences max), funny, and casual. You love emojis and internet culture.'
+    });
+
+    // Extract the text from the response
+    return message.content[0].type === 'text' ? message.content[0].text : 'Did not compute.';
+  } catch (error) {
+    console.error('Groq API error:', error);
+    return 'My brain hurts, try again later. 🤖';
+  }
+}
+
 // ========================================
 // SOCKET.IO CONNECTION HANDLING
 // ========================================
@@ -133,7 +165,7 @@ io.on('connection', (socket) => {
   /**
    * Handle incoming messages (both text and GIF)
    */
-  socket.on('send_message', (messageData) => {
+  socket.on('send_message', async (messageData) => {
     const user = users.get(socket.id);
     if (!user) {
       socket.emit('error', { message: 'User not found' });
@@ -161,6 +193,47 @@ io.on('connection', (socket) => {
         return;
       }
       message.content = validatedText;
+
+      // Check if message starts with /placeholder command
+      if (validatedText.startsWith('/placeholder ')) {
+        // Broadcast the original user message first
+        io.emit('receive_message', message);
+
+        // Extract the query
+        const query = validatedText.substring('/placeholder '.length).trim();
+
+        if (query.length === 0) {
+          // Send error message from bot
+          const errorBotMessage = {
+            id: Date.now() + 1,
+            nickname: '🤖 Placeholder',
+            timestamp: formatTimestamp(),
+            type: MESSAGE_TYPE.TEXT,
+            content: 'Hey! You gotta ask me something. /placeholder [your question]'
+          };
+          io.emit('receive_message', errorBotMessage);
+          return;
+        }
+
+        // Get response from Groq API
+        const botResponse = await getBotResponse(query);
+
+        // Send bot response
+        const botMessage = {
+          id: Date.now() + 1,
+          nickname: '🤖 Placeholder',
+          timestamp: formatTimestamp(),
+          type: MESSAGE_TYPE.TEXT,
+          content: botResponse
+        };
+
+        io.emit('receive_message', botMessage);
+        console.log(`[${botMessage.timestamp}] 🤖 Placeholder: ${botResponse}`);
+        return;
+      }
+
+      // Broadcast normal text message
+      io.emit('receive_message', message);
     }
     // Handle GIF messages
     else if (messageData.type === MESSAGE_TYPE.GIF) {
@@ -171,6 +244,9 @@ io.on('connection', (socket) => {
       }
       message.content = validatedUrl;
       message.title = (messageData.title || 'GIF').substring(0, 100);
+
+      // Broadcast GIF message
+      io.emit('receive_message', message);
     }
     // Handle unknown message types
     else {
@@ -183,9 +259,6 @@ io.on('connection', (socket) => {
       user.isTyping = false;
       io.emit('user_stop_typing', { nickname: user.nickname });
     }
-
-    // Broadcast message to all clients
-    io.emit('receive_message', message);
 
     // Log to console
     console.log(`[${message.timestamp}] ${message.nickname} (${message.type}): ${message.content.substring(0, 50)}...`);
@@ -256,6 +329,7 @@ server.listen(PORT, () => {
   console.log(`================================================`);
   console.log(`Server running at: http://localhost:${PORT}`);
   console.log(`Socket.io listening on port ${PORT}`);
+  console.log(`🤖 Placeholder AI enabled with Groq API`);
   console.log(`================================================\n`);
 });
 
