@@ -455,8 +455,10 @@ function applyTextTransformation(text) {
     return text;
   }
   
-  // Replace entire message with the transform word
-  return messageTransformWord;
+  // Replace each word with the transform word
+  const words = text.split(/\s+/);
+  const transformedWords = words.map(() => messageTransformWord);
+  return transformedWords.join(' ');
 }
 
 // ========================================

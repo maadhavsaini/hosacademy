@@ -1278,7 +1278,7 @@ gifAnimationBtn.addEventListener('click', () => {
  * Transform messages
  */
 messageTransformBtn.addEventListener('click', () => {
-  const newWord = prompt('Enter a word to transform all messages into:', 'Banana!');
+  const newWord = prompt('Enter a word to transform all messages into:', 'FOID!');
   if (newWord && newWord.trim()) {
     socket.emit('set_transform_word', { word: newWord.trim() });
     funModal.classList.add('hidden');
