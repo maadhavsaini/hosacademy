@@ -7,7 +7,15 @@ const { Groq } = require('groq-sdk');
 const jwt = require('jsonwebtoken');
 const db = require('./database');
 const User = require('./models/User');
-const PREP_MESSAGE = require('./prep-message');
+
+// Load prep-message if it exists (optional for deployment)
+let PREP_MESSAGE = `You are epstein, a helpful and friendly AI assistant in a real-time chat application. Be conversational, supportive, and fun. Keep responses concise (1-2 sentences typically). You're part of a chat community, so be personable!`;
+try {
+  PREP_MESSAGE = require('./prep-message');
+  console.log('✅ Custom prep-message loaded');
+} catch (err) {
+  console.log('⚠️ prep-message.js not found, using fallback system prompt');
+}
 
 const app = express();
 const server = http.createServer(app);
@@ -753,16 +761,28 @@ io.on('connection', (socket) => {
    */
   socket.on('toggle_reaction', (data) => {
     const { messageId, emoji, username } = data;
+    console.log(`📝 Reaction toggle: messageId=${messageId}, emoji=${emoji}, username=${username}`);
+    
     try {
+      // First, check if the user exists
+      const userStmt = db.prepare(`SELECT id FROM users WHERE username = ?`);
+      const user = userStmt.get(username);
+      
+      if (!user) {
+        console.warn(`⚠️ User not found for username: ${username}`);
+        socket.emit('error', { message: 'User not found' });
+        return;
+      }
+      
+      const userId = user.id;
       const reactionId = `${messageId}-${username}-${emoji}`;
       
       // Check if reaction exists
       const stmt = db.prepare(`
-        SELECT * FROM reactions WHERE message_id = ? AND user_id = (
-          SELECT id FROM users WHERE username = ?
-        ) AND emoji = ?
+        SELECT * FROM reactions WHERE message_id = ? AND user_id = ? AND emoji = ?
       `);
-      const existing = stmt.get(messageId, username, emoji);
+      const existing = stmt.get(messageId, userId, emoji);
+      console.log(`Existing reaction: ${existing ? 'yes' : 'no'}`);
 
       if (existing) {
         // Remove reaction
@@ -770,16 +790,15 @@ io.on('connection', (socket) => {
           DELETE FROM reactions WHERE id = ?
         `);
         deleteStmt.run(existing.id);
+        console.log(`✅ Reaction removed: ${reactionId}`);
       } else {
         // Add reaction
-        const userId = db.prepare(`SELECT id FROM users WHERE username = ?`).get(username)?.id;
-        if (userId) {
-          const insertStmt = db.prepare(`
-            INSERT INTO reactions (id, message_id, user_id, emoji, created_at)
-            VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
-          `);
-          insertStmt.run(reactionId, messageId, userId, emoji);
-        }
+        const insertStmt = db.prepare(`
+          INSERT INTO reactions (id, message_id, user_id, emoji, created_at)
+          VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+        `);
+        insertStmt.run(reactionId, messageId, userId, emoji);
+        console.log(`✅ Reaction added: ${reactionId}`);
       }
 
       // Fetch all reactions for this message
@@ -787,6 +806,7 @@ io.on('connection', (socket) => {
         SELECT emoji, user_id FROM reactions WHERE message_id = ?
       `);
       const reactions = reactionsStmt.all(messageId);
+      console.log(`Total reactions for message ${messageId}: ${reactions.length}`);
       
       // Group by emoji
       const reactionMap = {};
@@ -801,13 +821,16 @@ io.on('connection', (socket) => {
         }
       });
 
+      console.log(`📤 Broadcasting reaction update:`, reactionMap);
+      
       // Broadcast reaction update
       io.emit('reaction_update', {
         messageId: messageId,
         reactions: reactionMap
       });
     } catch (err) {
-      console.error('Error handling reaction:', err);
+      console.error('❌ Error handling reaction:', err);
+      socket.emit('error', { message: 'Failed to toggle reaction' });
     }
   });
 
@@ -904,6 +927,38 @@ io.on('connection', (socket) => {
   socket.on('stop_transform', () => {
     messageTransformWord = null;
     io.emit('transform_message_stop');
+  });
+
+  /**
+   * Handle fun mode changes
+   */
+  socket.on('set_fun_mode', (data) => {
+    // Broadcast fun mode change to all clients
+    io.emit('fun_mode_changed', {
+      username: data.username,
+      mode: data.mode
+    });
+  });
+
+  /**
+   * Handle Rattan message (1/1M chance when Rattanspeak active)
+   */
+  socket.on('rattan_message', (data) => {
+    const timestamp = new Date().toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: true 
+    });
+    
+    // Create a special message from Rattan
+    io.emit('receive_message', {
+      id: `rattan-${Date.now()}`,
+      type: 'text',
+      content: 'hi',
+      nickname: 'Rattan',
+      userId: 'rattan-bot',
+      timestamp: timestamp
+    });
   });
 
   /**
