@@ -102,6 +102,16 @@ const gifAnimationBtn = document.getElementById('gifAnimationBtn');
 const messageTransformBtn = document.getElementById('messageTransformBtn');
 const gifAnimationContainer = document.getElementById('gifAnimationContainer');
 
+// GIF Animation Modal Elements
+const gifAnimationModal = document.getElementById('gifAnimationModal');
+const gifAnimationModalClose = document.getElementById('gifAnimationModalClose');
+const gifInvincibleBtn = document.getElementById('gifInvincibleBtn');
+const gifSearchBtn = document.getElementById('gifSearchBtn');
+const gifAnimationSearchModal = document.getElementById('gifAnimationSearchModal');
+const gifAnimationSearchClose = document.getElementById('gifAnimationSearchClose');
+const gifAnimationSearchInput = document.getElementById('gifAnimationSearchInput');
+const gifAnimationSearchResults = document.getElementById('gifAnimationSearchResults');
+
 // ========================================
 // UTILITY FUNCTIONS
 // ========================================
@@ -978,10 +988,121 @@ function showReactionPicker(messageId, button) {
 /**
  * Play random GIF animation
  */
-function playRandomGif() {
+/**
+ * Play a specific GIF animation
+ * @param {string} gifUrl - URL of the GIF to play
+ */
+function playAnimatedGif(gifUrl) {
   socket.emit('play_gif', {
-    username: currentNickname
+    username: currentNickname,
+    gifUrl: gifUrl
   });
+}
+
+/**
+ * Play the Invincible GIF animation
+ */
+function playInvincibleGif() {
+  playAnimatedGif('@file:tracksuit-mark-invicible-mark.gif');
+  closeGifAnimationModal();
+}
+
+/**
+ * Open GIF animation options modal
+ */
+function openGifAnimationModal() {
+  gifAnimationModal.classList.remove('hidden');
+}
+
+/**
+ * Close GIF animation options modal
+ */
+function closeGifAnimationModal() {
+  gifAnimationModal.classList.add('hidden');
+}
+
+/**
+ * Open GIF animation search modal
+ */
+function openGifAnimationSearchModal() {
+  gifAnimationSearchModal.classList.remove('hidden');
+  gifAnimationSearchInput.focus();
+  gifAnimationSearchResults.innerHTML = '<p class="gif-loading-text">Search for GIFs to get started</p>';
+}
+
+/**
+ * Close GIF animation search modal
+ */
+function closeGifAnimationSearchModal() {
+  gifAnimationSearchModal.classList.add('hidden');
+  gifAnimationSearchInput.value = '';
+}
+
+/**
+ * Search for GIFs to play as animation
+ */
+async function searchAnimationGifs(query) {
+  if (!query.trim()) {
+    gifAnimationSearchResults.innerHTML = '<p class="gif-loading-text">Search for GIFs to get started</p>';
+    return;
+  }
+
+  gifAnimationSearchResults.innerHTML = '<p class="gif-loading-text">Loading...</p>';
+
+  try {
+    const url = `${GIPHY_SEARCH_URL}?api_key=${GIPHY_API_KEY}&q=${encodeURIComponent(query)}&limit=20&rating=PG`;
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (data.data.length === 0) {
+      gifAnimationSearchResults.innerHTML = '<p class="gif-loading-text">No GIFs found. Try another search!</p>';
+      return;
+    }
+
+    displayAnimationGifResults(data.data);
+  } catch (error) {
+    console.error('GIF search error:', error);
+    gifAnimationSearchResults.innerHTML = '<p class="gif-error-text">Error searching GIFs. Please try again.</p>';
+  }
+}
+
+/**
+ * Display GIF search results for animation selection
+ */
+function displayAnimationGifResults(gifs) {
+  gifAnimationSearchResults.innerHTML = '';
+
+  gifs.forEach((gif) => {
+    const gifItem = document.createElement('div');
+    gifItem.className = 'gif-item';
+
+    const img = document.createElement('img');
+    img.src = gif.images.fixed_height_small.url;
+    img.alt = gif.title || 'GIF';
+    img.loading = 'lazy';
+
+    gifItem.appendChild(img);
+
+    // Handle GIF selection
+    gifItem.addEventListener('click', () => {
+      playAnimatedGif(gif.images.original.url);
+      closeGifAnimationSearchModal();
+    });
+
+    gifAnimationSearchResults.appendChild(gifItem);
+  });
+}
+
+/**
+ * Play a specific GIF animation (old function, kept for compatibility)
+ */
+function playRandomGif() {
+  openGifAnimationModal();
 }
 
 /**
@@ -1270,8 +1391,60 @@ funModal.addEventListener('click', (e) => {
  * Play GIF animation
  */
 gifAnimationBtn.addEventListener('click', () => {
-  playRandomGif();
+  openGifAnimationModal();
   funModal.classList.add('hidden');
+});
+
+/**
+ * Close GIF animation modal
+ */
+gifAnimationModalClose.addEventListener('click', closeGifAnimationModal);
+
+/**
+ * Close GIF animation modal when clicking outside
+ */
+gifAnimationModal.addEventListener('click', (e) => {
+  if (e.target === gifAnimationModal) {
+    closeGifAnimationModal();
+  }
+});
+
+/**
+ * Play Invincible GIF
+ */
+gifInvincibleBtn.addEventListener('click', playInvincibleGif);
+
+/**
+ * Open GIF search modal
+ */
+gifSearchBtn.addEventListener('click', () => {
+  closeGifAnimationModal();
+  openGifAnimationSearchModal();
+});
+
+/**
+ * Close GIF animation search modal
+ */
+gifAnimationSearchClose.addEventListener('click', closeGifAnimationSearchModal);
+
+/**
+ * Close GIF animation search modal when clicking outside
+ */
+gifAnimationSearchModal.addEventListener('click', (e) => {
+  if (e.target === gifAnimationSearchModal) {
+    closeGifAnimationSearchModal();
+  }
+});
+
+/**
+ * Search GIFs for animation with debouncing
+ */
+let gifAnimationSearchTimeout = null;
+gifAnimationSearchInput.addEventListener('input', () => {
+  clearTimeout(gifAnimationSearchTimeout);
+  gifAnimationSearchTimeout = setTimeout(() => {
+    searchAnimationGifs(gifAnimationSearchInput.value);
+  }, 300);
 });
 
 /**

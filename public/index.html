@@ -358,6 +358,43 @@
       </div>
     </div>
 
+    <!-- GIF Animation Options Modal -->
+    <div id="gifAnimationModal" class="modal hidden">
+      <div class="modal-content fun-modal-content">
+        <button class="modal-close" id="gifAnimationModalClose">&times;</button>
+        <h2>🎬 GIF Animation</h2>
+        <div class="gif-animation-options">
+          <button id="gifInvincibleBtn" class="fun-option-btn">
+            <span class="fun-emoji">💪</span>
+            <span class="fun-label">Invincible</span>
+            <span class="fun-desc">Play the Mark Grayson scene</span>
+          </button>
+          <button id="gifSearchBtn" class="fun-option-btn">
+            <span class="fun-emoji">🔍</span>
+            <span class="fun-label">Search GIF</span>
+            <span class="fun-desc">Find a GIF to play</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- GIF Search for Animation Modal -->
+    <div id="gifAnimationSearchModal" class="modal hidden">
+      <div class="modal-content">
+        <button class="modal-close" id="gifAnimationSearchClose">
+          &times;
+        </button>
+        <h2>🔍 Search GIF to Play</h2>
+        <input
+          type="text"
+          id="gifAnimationSearchInput"
+          placeholder="Search for a GIF..."
+          class="search-input"
+        />
+        <div id="gifAnimationSearchResults" class="gif-results"></div>
+      </div>
+    </div>
+
     <!-- GIF Animation Container -->
     <div
       id="gifAnimationContainer"

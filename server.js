@@ -22,6 +22,9 @@ const io = socketIO(server, {
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Serve GIF files from public/gifs directory
+app.use('/gifs', express.static(path.join(__dirname, 'public', 'gifs')));
+
 // JWT Secret (should be in .env in production)
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
@@ -810,10 +813,28 @@ io.on('connection', (socket) => {
    */
   socket.on('play_gif', async (data) => {
     try {
-      const gifUrl = await getRandomGif();
+      let gifUrl = data.gifUrl; // Get GIF URL from client if provided
+      
+      // Handle file references
+      if (gifUrl && gifUrl.startsWith('@file:')) {
+        const filename = gifUrl.substring('@file:'.length);
+        // Validate filename to prevent directory traversal
+        if (!/^[\w.-]+$/.test(filename)) {
+          console.warn('Invalid filename:', filename);
+          gifUrl = null;
+        } else {
+          // Return the file URL that the client can access
+          gifUrl = `/gifs/${filename}`;
+        }
+      }
+      
+      // If no gifUrl provided or file reference failed, fetch a random one
+      if (!gifUrl) {
+        gifUrl = await getRandomGif();
+      }
       
       if (!gifUrl) {
-        console.warn('Failed to fetch random GIF from Giphy');
+        console.warn('Failed to get GIF URL');
         io.emit('gif_animation', {
           gifUrl: 'https://media.giphy.com/media/l0HlTy9x8FZo0XO1i/giphy.gif', // Fallback GIF
           username: data.username
