@@ -46,6 +46,36 @@ const CHARACTER_IDS = {
   shakespeare: 'bot_shakespeare'
 };
 
+// Helper function to get character info (built-in or custom)
+function getCharacterInfo(characterName) {
+  // Check built-in characters first
+  if (CHARACTER_NAMES[characterName]) {
+    return {
+      name: CHARACTER_NAMES[characterName],
+      prompt: CHARACTER_PROMPTS[characterName],
+      userId: CHARACTER_IDS[characterName],
+      isCustom: false
+    };
+  }
+
+  // Check custom characters in database
+  // Note: This requires the character name to match - custom character lookups happen differently
+  return null;
+}
+
+// Helper function to get custom character by name and optional creator
+function getCustomCharacterByName(characterName, creatorId = null) {
+  let query = `SELECT * FROM custom_characters WHERE name = ?`;
+  let params = [characterName];
+
+  if (creatorId) {
+    query += ` AND creator_id = ?`;
+    params.push(creatorId);
+  }
+
+  return db.prepare(query).get(...params);
+}
+
 const app = express();
 const server = http.createServer(app);
 const io = socketIO(server, {
@@ -265,12 +295,18 @@ function formatTimestamp() {
 /**
  * Call Groq API to get bot response
  */
-async function getBotResponse(query, history = [], character = 'epstein') {
+async function getBotResponse(query, history = [], character = 'epstein', customPrompt = null) {
   try {
     console.log(`📤 Calling Groq API as ${character} with query: "${query}"`);
     
     // Get the prompt for this character
-    const systemPrompt = CHARACTER_PROMPTS[character] || CHARACTER_PROMPTS.epstein;
+    // Use customPrompt if provided (for custom characters), otherwise use built-in prompts
+    let systemPrompt;
+    if (customPrompt) {
+      systemPrompt = customPrompt;
+    } else {
+      systemPrompt = CHARACTER_PROMPTS[character] || CHARACTER_PROMPTS.epstein;
+    }
     
     // Build messages array with history context
     const messages = [
@@ -707,18 +743,47 @@ io.on('connection', (socket) => {
 
       // Check if message starts with a character mention
       let character = null;
+      let characterInfo = null;
       let query = null;
       
+      // First, check for built-in characters
       for (const charName of Object.keys(CHARACTER_NAMES)) {
         if (validatedText.startsWith(`@${charName} `)) {
           character = charName;
+          characterInfo = getCharacterInfo(charName);
           query = validatedText.substring(`@${charName} `.length).trim();
           break;
         }
       }
 
+      // If no built-in character found, check for custom characters
+      if (!character && !query) {
+        // Extract potential character name from @mention
+        const mentionMatch = validatedText.match(/^@(\w+)\s+(.+)$/);
+        if (mentionMatch) {
+          const potentialCharName = mentionMatch[1];
+          const customChar = getCustomCharacterByName(potentialCharName);
+          
+          if (customChar) {
+            character = potentialCharName;
+            query = mentionMatch[2].trim();
+            characterInfo = {
+              name: customChar.name,
+              prompt: customChar.system_prompt,
+              userId: `bot_custom_${customChar.id}`,
+              isCustom: true,
+              customId: customChar.id
+            };
+            
+            // Increment usage count
+            db.prepare(`UPDATE custom_characters SET usage_count = usage_count + 1 WHERE id = ?`)
+              .run(customChar.id);
+          }
+        }
+      }
+
       // If a character was mentioned, process the bot response
-      if (character && query !== null) {
+      if (character && query !== null && characterInfo) {
         // Broadcast the original user message first
         const displayMessage = {
           ...message,
@@ -728,14 +793,13 @@ io.on('connection', (socket) => {
 
         if (query.length === 0) {
           // Send error message from bot
-          const characterName = CHARACTER_NAMES[character];
           const errorBotMessage = {
             id: (Date.now() + 1).toString(),
             userId: null,
-            nickname: characterName,
+            nickname: characterInfo.name,
             timestamp: formatTimestamp(),
             type: MESSAGE_TYPE.TEXT,
-            content: `Hey! You gotta ask me something. @${characterName} [your question]`,
+            content: `Hey! You gotta ask me something. @${characterInfo.name} [your question]`,
             reactions: {}
           };
           const displayErrorMessage = {
@@ -747,7 +811,14 @@ io.on('connection', (socket) => {
         }
 
         // Get response from Groq API with conversation history
-        const botResponse = await getBotResponse(query, conversationHistory, character);
+        // For custom characters, use a modified approach that includes the system prompt
+        let botResponse;
+        if (characterInfo.isCustom) {
+          // For custom characters, pass the system prompt directly to getBotResponse
+          botResponse = await getBotResponse(query, conversationHistory, character, characterInfo.prompt);
+        } else {
+          botResponse = await getBotResponse(query, conversationHistory, character);
+        }
 
         // Add user message to history
         conversationHistory.push({
@@ -768,8 +839,8 @@ io.on('connection', (socket) => {
 
         // Send bot response (split into multiple messages if too long)
         const responseParts = splitLongResponse(botResponse, 300);
-        const characterName = CHARACTER_NAMES[character];
-        const characterId = CHARACTER_IDS[character];
+        const characterName = characterInfo.name;
+        const characterId = characterInfo.userId;
         
         responseParts.forEach((part, index) => {
           const botMessage = {
@@ -1104,6 +1175,126 @@ io.on('connection', (socket) => {
     } catch (err) {
       console.error('❌ Error deleting message:', err);
       socket.emit('error', { message: 'Failed to delete message' });
+    }
+  });
+
+  /**
+   * Handle custom character creation
+   */
+  socket.on('create_custom_character', (data) => {
+    const user = users.get(socket.id);
+    if (!user || !user.userId) {
+      socket.emit('error', { message: 'User not authenticated' });
+      return;
+    }
+
+    const { name, description, systemPrompt } = data;
+    
+    try {
+      // Validate input
+      if (!name || name.length < 2 || name.length > 20) {
+        socket.emit('error', { message: 'Character name must be 2-20 characters' });
+        return;
+      }
+      
+      if (!systemPrompt || systemPrompt.length < 10 || systemPrompt.length > 1000) {
+        socket.emit('error', { message: 'System prompt must be 10-1000 characters' });
+        return;
+      }
+
+      // Check if character name already exists for this user
+      const existing = db.prepare(`
+        SELECT id FROM custom_characters 
+        WHERE creator_id = ? AND name = ?
+      `).get(user.userId, name);
+      
+      if (existing) {
+        socket.emit('error', { message: 'Character name already exists' });
+        return;
+      }
+
+      // Create character
+      const charId = `custom_${user.userId}_${Date.now()}`;
+      db.prepare(`
+        INSERT INTO custom_characters (id, creator_id, name, description, system_prompt, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      `).run(charId, user.userId, name, description || '', systemPrompt);
+
+      console.log(`✨ Custom character created: "${name}" by ${user.username}`);
+
+      socket.emit('character_created', {
+        id: charId,
+        name: name,
+        description: description || ''
+      });
+    } catch (err) {
+      console.error('❌ Error creating custom character:', err);
+      socket.emit('error', { message: 'Failed to create character' });
+    }
+  });
+
+  /**
+   * Handle fetching user's custom characters
+   */
+  socket.on('get_my_characters', (data) => {
+    const user = users.get(socket.id);
+    if (!user || !user.userId) {
+      socket.emit('error', { message: 'User not authenticated' });
+      return;
+    }
+
+    try {
+      const characters = db.prepare(`
+        SELECT id, name, description, usage_count, created_at
+        FROM custom_characters
+        WHERE creator_id = ?
+        ORDER BY created_at DESC
+      `).all(user.userId);
+
+      socket.emit('my_characters', { characters });
+    } catch (err) {
+      console.error('❌ Error fetching characters:', err);
+      socket.emit('error', { message: 'Failed to fetch characters' });
+    }
+  });
+
+  /**
+   * Handle deleting a custom character
+   */
+  socket.on('delete_custom_character', (data) => {
+    const user = users.get(socket.id);
+    if (!user || !user.userId) {
+      socket.emit('error', { message: 'User not authenticated' });
+      return;
+    }
+
+    const { characterId } = data;
+    
+    try {
+      // Verify ownership
+      const character = db.prepare(`
+        SELECT * FROM custom_characters WHERE id = ?
+      `).get(characterId);
+
+      if (!character) {
+        socket.emit('error', { message: 'Character not found' });
+        return;
+      }
+
+      if (character.creator_id !== user.userId) {
+        socket.emit('error', { message: 'You can only delete your own characters' });
+        return;
+      }
+
+      // Delete character
+      db.prepare(`DELETE FROM custom_characters WHERE id = ?`).run(characterId);
+
+      console.log(`🗑️ Custom character deleted: "${character.name}"`);
+
+      socket.emit('character_deleted', { characterId, name: character.name });
+    } catch (err) {
+      console.error('❌ Error deleting character:', err);
+      socket.emit('error', { message: 'Failed to delete character' });
     }
   });
 

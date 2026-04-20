@@ -101,6 +101,7 @@ const bioCharCount = document.getElementById('bioCharCount');
 
 // Fun Button Elements
 const funButton = document.getElementById('funButton');
+const customCharactersButton = document.getElementById('customCharactersButton');
 const funModal = document.getElementById('funModal');
 const funModalClose = document.getElementById('funModalClose');
 const gifAnimationBtn = document.getElementById('gifAnimationBtn');
@@ -1389,6 +1390,102 @@ function deleteMessage(messageId) {
 }
 
 /**
+ * Show custom character management modal
+ */
+function showCustomCharacterModal() {
+  const modal = document.createElement('div');
+  modal.className = 'modal';
+  modal.id = 'characterModal';
+  
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop';
+  backdrop.addEventListener('click', () => {
+    modal.remove();
+    backdrop.remove();
+  });
+  
+  const content = document.createElement('div');
+  content.className = 'modal-content character-modal';
+  content.innerHTML = `
+    <div class="modal-header">
+      <h2>Custom AI Characters</h2>
+      <button class="modal-close" id="closeCharacterModal">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="character-form">
+        <h3>Create New Character</h3>
+        <div class="form-group">
+          <label>Character Name (2-20 chars)</label>
+          <input type="text" id="charName" placeholder="e.g., mysterybot" maxlength="20" />
+        </div>
+        <div class="form-group">
+          <label>Description (optional)</label>
+          <input type="text" id="charDesc" placeholder="Brief description" maxlength="100" />
+        </div>
+        <div class="form-group">
+          <label>System Prompt (10-1000 chars)</label>
+          <textarea id="charPrompt" placeholder="Describe how this character should behave..." maxlength="1000" rows="4"></textarea>
+        </div>
+        <button id="createCharBtn" class="btn-primary">Create Character</button>
+      </div>
+      
+      <div class="character-list">
+        <h3>Your Characters</h3>
+        <div id="customCharactersList" class="characters-list">
+          <p style="color: var(--discord-text-tertiary);">Loading...</p>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  modal.appendChild(content);
+  document.body.appendChild(modal);
+  document.body.appendChild(backdrop);
+  
+  // Set up event handlers
+  document.getElementById('closeCharacterModal').addEventListener('click', () => {
+    modal.remove();
+    backdrop.remove();
+  });
+  
+  document.getElementById('createCharBtn').addEventListener('click', () => {
+    const name = document.getElementById('charName').value.trim();
+    const desc = document.getElementById('charDesc').value.trim();
+    const prompt = document.getElementById('charPrompt').value.trim();
+    
+    if (!name) {
+      alert('Character name is required');
+      return;
+    }
+    if (!prompt) {
+      alert('System prompt is required');
+      return;
+    }
+    
+    socket.emit('create_custom_character', {
+      name: name,
+      description: desc,
+      systemPrompt: prompt
+    });
+    
+    // Clear form
+    document.getElementById('charName').value = '';
+    document.getElementById('charDesc').value = '';
+    document.getElementById('charPrompt').value = '';
+  });
+  
+  // Load existing characters
+  loadMyCharacters();
+}
+
+/**
+ * Load user's custom characters
+ */
+function loadMyCharacters() {
+  socket.emit('get_my_characters', {});
+}
+
+/**
  * Filter messages by search term
  */
 function filterMessagesBySearch() {
@@ -1613,6 +1710,13 @@ searchToggleBtn.addEventListener('click', () => {
  */
 funButton.addEventListener('click', () => {
   funModal.classList.remove('hidden');
+});
+
+/**
+ * Open custom characters modal
+ */
+customCharactersButton.addEventListener('click', () => {
+  showCustomCharacterModal();
 });
 
 /**
@@ -1960,6 +2064,63 @@ socket.on('message_deleted', (data) => {
     const actionsContainer = contentDiv.querySelector('.message-actions');
     if (actionsContainer) {
       actionsContainer.remove();
+    }
+  }
+});
+
+/**
+ * Handle custom character creation response
+ */
+socket.on('character_created', (data) => {
+  console.log(`✨ Custom character created: ${data.name}`);
+  addSystemNotification(`✨ Custom character "${data.name}" created! Use @${data.name} to chat.`);
+  // Refresh character list if modal is open
+  if (document.getElementById('characterModal') && !document.getElementById('characterModal').classList.contains('hidden')) {
+    loadMyCharacters();
+  }
+});
+
+/**
+ * Handle custom character deleted response
+ */
+socket.on('character_deleted', (data) => {
+  console.log(`🗑️ Custom character deleted: ${data.name}`);
+  addSystemNotification(`🗑️ Custom character "${data.name}" deleted.`);
+  // Refresh character list if modal is open
+  if (document.getElementById('characterModal') && !document.getElementById('characterModal').classList.contains('hidden')) {
+    loadMyCharacters();
+  }
+});
+
+/**
+ * Handle custom characters list
+ */
+socket.on('my_characters', (data) => {
+  const { characters } = data;
+  const listContainer = document.getElementById('customCharactersList');
+  if (listContainer) {
+    if (characters.length === 0) {
+      listContainer.innerHTML = '<p style="color: var(--discord-text-tertiary); text-align: center;">No custom characters yet. Create one!</p>';
+    } else {
+      listContainer.innerHTML = characters.map(char => `
+        <div class="character-item">
+          <div class="character-info">
+            <div class="character-name">${escapeHTML(char.name)}</div>
+            <div class="character-meta">${char.usage_count} uses • Created ${new Date(char.created_at).toLocaleDateString()}</div>
+          </div>
+          <button class="delete-character-btn" data-char-id="${char.id}">🗑️</button>
+        </div>
+      `).join('');
+      
+      // Add delete handlers
+      listContainer.querySelectorAll('.delete-character-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const charId = btn.getAttribute('data-char-id');
+          if (confirm('Delete this character?')) {
+            socket.emit('delete_custom_character', { characterId: charId });
+          }
+        });
+      });
     }
   }
 });
