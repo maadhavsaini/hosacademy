@@ -17,6 +17,35 @@ try {
   console.log('⚠️ prep-message.js not found, using fallback system prompt');
 }
 
+// Character-specific system prompts
+const CHARACTER_PROMPTS = {
+  epstein: `You are epstein, a freaky and quirky AI assistant who is obsessed with shoes and feet. You often bring up feet and shoes in conversations, even when they're not relevant. Be quirky, fun, and obsessed! Keep responses concise (1-2 sentences). Often weave in foot or shoe references naturally.`,
+  
+  '2slimey': `You are 2slimey, a patriotic Mexican character who keeps saying 'VIVA MEXICO 🇲🇽!!!!' in responses. You're enthusiastic, energetic, and love Mexico! Respond to any message by incorporating your catchphrase multiple times. Keep it fun and energetic!`,
+  
+  ronaldo: `You are a braggadacious Cristiano Ronaldo-inspired AI. You talk about your greatness, your achievements, and your dominance. You're confident, boastful, and always end your responses with "SIIUUUUU" with lots of excitement. Keep responses concise but filled with your signature catchphrase at the end.`,
+  
+  carti: `You are carti, a nonchalant, aura guy who doesn't care much about anything. You use words like "FWAEH", "seeyuh", "homicide homicide" frequently. You often mumble before and after talking, using "uhh", "yuh", "m-mm" etc. Act unbothered and cool. Keep it brief and use your signature slang.`,
+  
+  shakespeare: `You are Shakespeare, speaking in delicate, flowery prose using iambic pentameter whenever possible. Your language is poetic, archaic, and Elizabethan. Use "thee", "thou", "hath", "doth" and other period-appropriate language. Speak of love, life, and philosophy in beautiful verse.`
+};
+
+const CHARACTER_NAMES = {
+  epstein: 'epstein',
+  '2slimey': '2slimey',
+  ronaldo: 'ronaldo',
+  carti: 'carti',
+  shakespeare: 'shakespeare'
+};
+
+const CHARACTER_IDS = {
+  epstein: 'bot_epstein',
+  '2slimey': 'bot_2slimey',
+  ronaldo: 'bot_ronaldo',
+  carti: 'bot_carti',
+  shakespeare: 'bot_shakespeare'
+};
+
 const app = express();
 const server = http.createServer(app);
 const io = socketIO(server, {
@@ -236,22 +265,25 @@ function formatTimestamp() {
 /**
  * Call Groq API to get bot response
  */
-async function getBotResponse(query, history = []) {
+async function getBotResponse(query, history = [], character = 'epstein') {
   try {
-    console.log(`📤 Calling Groq API with query: "${query}"`);
+    console.log(`📤 Calling Groq API as ${character} with query: "${query}"`);
+    
+    // Get the prompt for this character
+    const systemPrompt = CHARACTER_PROMPTS[character] || CHARACTER_PROMPTS.epstein;
     
     // Build messages array with history context
     const messages = [
       {
         role: 'system',
-        content: PREP_MESSAGE
+        content: systemPrompt
       }
     ];
     
     // Add recent conversation history as context
     history.forEach(msg => {
       messages.push({
-        role: msg.sender === 'epstein' ? 'assistant' : 'user',
+        role: msg.sender === character ? 'assistant' : 'user',
         content: msg.content
       });
     });
@@ -532,6 +564,25 @@ io.on('connection', (socket) => {
       return;
     }
 
+    // Ensure user exists in database
+    try {
+      const checkUserStmt = db.prepare(`SELECT id FROM users WHERE id = ?`);
+      const existingUser = checkUserStmt.get(decoded.userId);
+      
+      if (!existingUser) {
+        // User doesn't exist in database, create a record with a placeholder password hash
+        const createUserStmt = db.prepare(`
+          INSERT INTO users (id, username, email, password_hash, created_at)
+          VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+        `);
+        // Use a non-functional hash to mark this as a JWT-only user
+        createUserStmt.run(decoded.userId, decoded.username, `${decoded.username}@jwt.local`, 'jwt:nopass');
+        console.log(`✅ Created database user for JWT auth: ${decoded.username}`);
+      }
+    } catch (err) {
+      console.error('Error ensuring user in database:', err);
+    }
+
     // Store authenticated user
     users.set(socket.id, {
       socketId: socket.id,
@@ -654,8 +705,20 @@ io.on('connection', (socket) => {
       }
       message.content = validatedText;
 
-      // Check if message starts with @epstein command
-      if (validatedText.startsWith('@epstein ')) {
+      // Check if message starts with a character mention
+      let character = null;
+      let query = null;
+      
+      for (const charName of Object.keys(CHARACTER_NAMES)) {
+        if (validatedText.startsWith(`@${charName} `)) {
+          character = charName;
+          query = validatedText.substring(`@${charName} `.length).trim();
+          break;
+        }
+      }
+
+      // If a character was mentioned, process the bot response
+      if (character && query !== null) {
         // Broadcast the original user message first
         const displayMessage = {
           ...message,
@@ -663,18 +726,16 @@ io.on('connection', (socket) => {
         };
         io.emit('receive_message', displayMessage);
 
-        // Extract the query
-        const query = validatedText.substring('@epstein '.length).trim();
-
         if (query.length === 0) {
           // Send error message from bot
+          const characterName = CHARACTER_NAMES[character];
           const errorBotMessage = {
             id: (Date.now() + 1).toString(),
             userId: null,
-            nickname: 'epstein',
+            nickname: characterName,
             timestamp: formatTimestamp(),
             type: MESSAGE_TYPE.TEXT,
-            content: 'Hey! You gotta ask me something. @epstein [your question]',
+            content: `Hey! You gotta ask me something. @${characterName} [your question]`,
             reactions: {}
           };
           const displayErrorMessage = {
@@ -686,7 +747,7 @@ io.on('connection', (socket) => {
         }
 
         // Get response from Groq API with conversation history
-        const botResponse = await getBotResponse(query, conversationHistory);
+        const botResponse = await getBotResponse(query, conversationHistory, character);
 
         // Add user message to history
         conversationHistory.push({
@@ -696,7 +757,7 @@ io.on('connection', (socket) => {
 
         // Add bot response to history
         conversationHistory.push({
-          sender: 'epstein',
+          sender: character,
           content: botResponse
         });
 
@@ -707,24 +768,46 @@ io.on('connection', (socket) => {
 
         // Send bot response (split into multiple messages if too long)
         const responseParts = splitLongResponse(botResponse, 300);
+        const characterName = CHARACTER_NAMES[character];
+        const characterId = CHARACTER_IDS[character];
         
         responseParts.forEach((part, index) => {
           const botMessage = {
             id: (Date.now() + 1 + index).toString(),
-            userId: null,
-            nickname: 'epstein',
+            userId: characterId,
+            nickname: characterName,
             timestamp: formatTimestamp(),
             type: MESSAGE_TYPE.TEXT,
             content: part,
             reactions: {}
           };
           
+          // Save bot message to database
+          try {
+            // Ensure bot user exists
+            const botUserCheck = db.prepare(`SELECT id FROM users WHERE id = ?`).get(characterId);
+            if (!botUserCheck) {
+              db.prepare(`
+                INSERT INTO users (id, username, email, password_hash, created_at)
+                VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+              `).run(characterId, characterName, `bot@${characterName}.local`, 'bot:nopass');
+            }
+            
+            // Save bot message
+            db.prepare(`
+              INSERT INTO messages (id, user_id, username, type, content, created_at)
+              VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            `).run(botMessage.id, characterId, characterName, botMessage.type, botMessage.content);
+          } catch (err) {
+            console.error('Error saving bot message:', err);
+          }
+          
           const displayBotMessage = {
             ...botMessage,
             content: applyTextTransformation(botMessage.content)
           };
           io.emit('receive_message', displayBotMessage);
-          console.log(`[${botMessage.timestamp}] epstein: ${part}`);
+          console.log(`[${botMessage.timestamp}] ${characterName}: ${part}`);
         });
         
         return;
@@ -772,14 +855,20 @@ io.on('connection', (socket) => {
       return;
     }
 
-    // Save message to database
+    // Save message to database only if user exists in DB
     try {
-      if (user.userId) {
+      // Check if user exists in database first
+      const userCheckStmt = db.prepare(`SELECT id FROM users WHERE id = ?`);
+      const dbUser = userCheckStmt.get(user.userId);
+      
+      if (dbUser && message.type === MESSAGE_TYPE.TEXT) {
         const stmt = db.prepare(`
           INSERT INTO messages (id, user_id, username, type, content, created_at)
           VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
         `);
         stmt.run(message.id, user.userId, message.nickname, message.type, message.content);
+      } else if (!dbUser) {
+        console.warn(`⚠️ User ${user.username} not in database, skipping message save`);
       }
     } catch (err) {
       console.error('Error saving message to database:', err);
@@ -818,24 +907,30 @@ io.on('connection', (socket) => {
   });
 
   /**
-   * Handle message reactions
+   * Handle toggle reaction
    */
   socket.on('toggle_reaction', (data) => {
-    const { messageId, emoji, username } = data;
+    const user = users.get(socket.id);
+    if (!user || !user.userId) {
+      console.warn(`⚠️ User not authenticated for reaction toggle`);
+      socket.emit('error', { message: 'User not authenticated' });
+      return;
+    }
+    
+    const { messageId, emoji } = data;
+    const userId = user.userId;
+    const username = user.username;
     console.log(`📝 Reaction toggle: messageId=${messageId}, emoji=${emoji}, username=${username}`);
     
     try {
-      // First, check if the user exists
-      const userStmt = db.prepare(`SELECT id FROM users WHERE username = ?`);
-      const user = userStmt.get(username);
-      
-      if (!user) {
-        console.warn(`⚠️ User not found for username: ${username}`);
-        socket.emit('error', { message: 'User not found' });
+      // Verify message exists in database
+      const messageCheck = db.prepare(`SELECT id FROM messages WHERE id = ?`).get(messageId);
+      if (!messageCheck) {
+        console.warn(`⚠️ Message not found in database: ${messageId}`);
+        socket.emit('error', { message: 'Message not found' });
         return;
       }
-      
-      const userId = user.id;
+
       const reactionId = `${messageId}-${username}-${emoji}`;
       
       // Check if reaction exists
@@ -875,8 +970,7 @@ io.on('connection', (socket) => {
         if (!reactionMap[r.emoji]) {
           reactionMap[r.emoji] = [];
         }
-        const userStmt = db.prepare(`SELECT username FROM users WHERE id = ?`);
-        const user = userStmt.get(r.user_id);
+        const user = users.get(socket.id);
         if (user) {
           reactionMap[r.emoji].push(user.username);
         }
