@@ -35,6 +35,8 @@ function initializeDatabase() {
         type TEXT DEFAULT 'text',
         content TEXT NOT NULL,
         reply_to_id TEXT,
+        is_deleted INTEGER DEFAULT 0,
+        edited_at DATETIME,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id)
       )

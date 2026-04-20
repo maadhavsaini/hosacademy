@@ -894,6 +894,26 @@ function addMessage(message, isOwn = false) {
 
   messageContent.appendChild(reactionsContainer);
 
+  // Add message action buttons (edit/delete) for own messages
+  if (isOwn && message.type === MESSAGE_TYPE.TEXT) {
+    const actionsContainer = document.createElement('div');
+    actionsContainer.className = 'message-actions';
+    
+    const editBtn = document.createElement('button');
+    editBtn.className = 'action-btn edit-btn';
+    editBtn.textContent = '✏️ Edit';
+    editBtn.addEventListener('click', () => showEditModal(message.id, message.content));
+    actionsContainer.appendChild(editBtn);
+    
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'action-btn delete-btn';
+    deleteBtn.textContent = '🗑️ Delete';
+    deleteBtn.addEventListener('click', () => deleteMessage(message.id));
+    actionsContainer.appendChild(deleteBtn);
+    
+    messageContent.appendChild(actionsContainer);
+  }
+
   contentWrapper.appendChild(avatar);
   contentWrapper.appendChild(messageContent);
   messageElement.appendChild(contentWrapper);
@@ -1288,6 +1308,84 @@ function toggleReaction(messageId, emoji) {
     emoji: emoji,
     username: currentNickname
   });
+}
+
+/**
+ * Show edit modal for a message
+ */
+function showEditModal(messageId, currentContent) {
+  const modal = document.createElement('div');
+  modal.className = 'modal';
+  modal.id = 'editModal';
+  
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop';
+  backdrop.addEventListener('click', () => {
+    modal.remove();
+    backdrop.remove();
+  });
+  
+  const content = document.createElement('div');
+  content.className = 'modal-content';
+  content.innerHTML = `
+    <div class="modal-header">
+      <h2>Edit Message</h2>
+      <button class="modal-close" id="closeEditModal">×</button>
+    </div>
+    <div class="modal-body">
+      <textarea id="editMessageInput" maxlength="500" rows="4">${escapeHTML(currentContent)}</textarea>
+      <div class="edit-hint">You can only edit messages within 5 minutes of posting.</div>
+    </div>
+    <div class="modal-footer">
+      <button id="cancelEditBtn" class="btn-secondary">Cancel</button>
+      <button id="saveEditBtn" class="btn-primary">Save Changes</button>
+    </div>
+  `;
+  
+  modal.appendChild(content);
+  document.body.appendChild(modal);
+  document.body.appendChild(backdrop);
+  
+  const editInput = document.getElementById('editMessageInput');
+  editInput.focus();
+  editInput.select();
+  
+  document.getElementById('closeEditModal').addEventListener('click', () => {
+    modal.remove();
+    backdrop.remove();
+  });
+  
+  document.getElementById('cancelEditBtn').addEventListener('click', () => {
+    modal.remove();
+    backdrop.remove();
+  });
+  
+  document.getElementById('saveEditBtn').addEventListener('click', () => {
+    const newContent = editInput.value.trim();
+    if (!newContent) {
+      alert('Message cannot be empty');
+      return;
+    }
+    
+    socket.emit('edit_message', {
+      messageId: messageId,
+      newContent: newContent
+    });
+    
+    modal.remove();
+    backdrop.remove();
+  });
+}
+
+/**
+ * Delete a message
+ */
+function deleteMessage(messageId) {
+  if (confirm('Are you sure you want to delete this message? This action cannot be undone.')) {
+    socket.emit('delete_message', {
+      messageId: messageId
+    });
+  }
 }
 
 /**
@@ -1811,6 +1909,58 @@ socket.on('reaction_update', (data) => {
     }
   } else {
     console.log(`⚠️ Message element not found for reaction update: ${messageId}`);
+  }
+});
+
+/**
+ * Handle message edited
+ */
+socket.on('message_edited', (data) => {
+  const { messageId, newContent, editedAt } = data;
+  console.log(`✏️ Message edited: ${messageId}`);
+  
+  const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
+  if (messageElement) {
+    const contentDiv = messageElement.querySelector('.message-content');
+    if (contentDiv) {
+      // Update content
+      const content = contentDiv.querySelector(':not(.message-header):not(.message-reactions):not(.message-actions)');
+      if (content) {
+        content.innerHTML = escapeHTML(newContent);
+      }
+      
+      // Add (edited) marker to timestamp
+      const timestamp = contentDiv.querySelector('.timestamp');
+      if (timestamp && !timestamp.textContent.includes('(edited)')) {
+        timestamp.textContent += ' (edited)';
+      }
+    }
+  }
+});
+
+/**
+ * Handle message deleted
+ */
+socket.on('message_deleted', (data) => {
+  const { messageId } = data;
+  console.log(`🗑️ Message deleted: ${messageId}`);
+  
+  const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
+  if (messageElement) {
+    // Replace content with [deleted]
+    const contentDiv = messageElement.querySelector('.message-content');
+    if (contentDiv) {
+      const textContent = contentDiv.querySelector(':not(.message-header):not(.message-reactions):not(.message-actions)');
+      if (textContent) {
+        textContent.innerHTML = '<em style="opacity: 0.6">[deleted]</em>';
+      }
+    }
+    
+    // Remove action buttons
+    const actionsContainer = contentDiv.querySelector('.message-actions');
+    if (actionsContainer) {
+      actionsContainer.remove();
+    }
   }
 });
 

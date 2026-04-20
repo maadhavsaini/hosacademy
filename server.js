@@ -996,6 +996,118 @@ io.on('connection', (socket) => {
   });
 
   /**
+   * Handle message editing
+   */
+  socket.on('edit_message', (data) => {
+    const user = users.get(socket.id);
+    if (!user || !user.userId) {
+      console.warn(`⚠️ User not authenticated for edit`);
+      socket.emit('error', { message: 'User not authenticated' });
+      return;
+    }
+
+    const { messageId, newContent } = data;
+    
+    try {
+      // Get message from DB to verify ownership
+      const message = db.prepare(`SELECT * FROM messages WHERE id = ?`).get(messageId);
+      
+      if (!message) {
+        socket.emit('error', { message: 'Message not found' });
+        return;
+      }
+      
+      if (message.user_id !== user.userId) {
+        socket.emit('error', { message: 'You can only edit your own messages' });
+        return;
+      }
+
+      // Check if message is older than 5 minutes (only allow recent edits)
+      const messageAge = Date.now() - new Date(message.created_at).getTime();
+      if (messageAge > 5 * 60 * 1000) {
+        socket.emit('error', { message: 'Can only edit messages within 5 minutes of posting' });
+        return;
+      }
+
+      // Trim and validate content
+      const trimmedContent = newContent.trim().substring(0, 500);
+      if (trimmedContent.length === 0) {
+        socket.emit('error', { message: 'Message cannot be empty' });
+        return;
+      }
+
+      // Update message in DB
+      db.prepare(`
+        UPDATE messages 
+        SET content = ?, edited_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).run(trimmedContent, messageId);
+
+      console.log(`✏️ Message edited: ${messageId} by ${user.username}`);
+
+      // Broadcast edit event to all clients
+      io.emit('message_edited', {
+        messageId: messageId,
+        newContent: applyTextTransformation(trimmedContent),
+        editedAt: new Date().toISOString()
+      });
+
+      socket.emit('edit_success', { messageId: messageId });
+    } catch (err) {
+      console.error('❌ Error editing message:', err);
+      socket.emit('error', { message: 'Failed to edit message' });
+    }
+  });
+
+  /**
+   * Handle message deletion
+   */
+  socket.on('delete_message', (data) => {
+    const user = users.get(socket.id);
+    if (!user || !user.userId) {
+      console.warn(`⚠️ User not authenticated for delete`);
+      socket.emit('error', { message: 'User not authenticated' });
+      return;
+    }
+
+    const { messageId } = data;
+    
+    try {
+      // Get message from DB to verify ownership
+      const message = db.prepare(`SELECT * FROM messages WHERE id = ?`).get(messageId);
+      
+      if (!message) {
+        socket.emit('error', { message: 'Message not found' });
+        return;
+      }
+      
+      if (message.user_id !== user.userId) {
+        socket.emit('error', { message: 'You can only delete your own messages' });
+        return;
+      }
+
+      // Mark message as deleted (soft delete)
+      db.prepare(`
+        UPDATE messages 
+        SET is_deleted = 1, content = ''
+        WHERE id = ?
+      `).run(messageId);
+
+      console.log(`🗑️ Message deleted: ${messageId} by ${user.username}`);
+
+      // Broadcast delete event to all clients
+      io.emit('message_deleted', {
+        messageId: messageId
+      });
+
+      socket.emit('delete_success', { messageId: messageId });
+    } catch (err) {
+      console.error('❌ Error deleting message:', err);
+      socket.emit('error', { message: 'Failed to delete message' });
+    }
+  });
+
+  /**
    * Handle GIF animation request
    */
   socket.on('play_gif', async (data) => {
